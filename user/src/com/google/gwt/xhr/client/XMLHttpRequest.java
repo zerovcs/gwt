@@ -45,12 +45,14 @@ public class XMLHttpRequest extends JavaScriptObject {
      * {@link com.google.gwt.typedarrays.shared.TypedArrays#isSupported()}
      * returns true.
      */
-    ArrayBuffer("arraybuffer");
+    ArrayBuffer("arraybuffer"),
 
     // not implemented yet
-    /*
-    Blob("blob"),
     
+    Blob("blob"),
+    Json("json");
+    
+    /*
     Document("document"),
     
     Text("text");
