@@ -216,7 +216,6 @@ java_library(
         exclude = [
             "core/super/com/google/gwt/dev/jjs/intrinsic/**",
             "**/package-info.java",
-            "**/EmulatedCharset.java",
         ],
     ),
     compatible_with = ["//buildenv/target:android"],
