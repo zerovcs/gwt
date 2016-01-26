@@ -18,6 +18,10 @@ package com.google.gwt.xhr.client;
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.typedarrays.shared.ArrayBuffer;
 
+import jsinterop.JsObject;
+
+import jsinterop.JsBlob;
+
 /**
  * The native XMLHttpRequest object. Most applications should use the higher-
  * level {@link com.google.gwt.http.client.RequestBuilder} class unless they
@@ -181,6 +185,19 @@ public class XMLHttpRequest extends JavaScriptObject {
   public final native ArrayBuffer getResponseArrayBuffer() /*-{
     return this.response;
   }-*/;
+  
+  public final native XMLHttpRequestUpload upload() /*-{
+    return this.upload;
+  }-*/;
+  
+  public final native <T extends JsObject> T getResponseJson() /*-{
+    return this.response;
+  }-*/;
+  
+  public final native JsBlob getResponseBlob() /*-{
+    return this.response;
+  }-*/;
+
 
   /**
    * Gets an HTTP response header.
