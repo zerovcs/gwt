@@ -47,12 +47,12 @@ public class XMLHttpRequest extends JavaScriptObject {
      */
     ArrayBuffer("arraybuffer"),
 
-    // not implemented yet
     
     Blob("blob"),
     Json("json");
     
     /*
+    // not implemented yet
     Document("document"),
     
     Text("text");
