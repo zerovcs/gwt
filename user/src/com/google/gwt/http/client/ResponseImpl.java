@@ -20,6 +20,9 @@ import com.google.gwt.xhr.client.XMLHttpRequest;
 import java.util.ArrayList;
 import java.util.List;
 
+import jsinterop.JsBlob;
+import jsinterop.JsObject;
+
 /**
  * A {@link Response} implementation based on a {@link XMLHttpRequest}.
  */
@@ -105,5 +108,15 @@ class ResponseImpl extends Response {
 
   protected boolean isResponseReady() {
     return xmlHttpRequest.getReadyState() == XMLHttpRequest.DONE;
+  }
+  
+  @Override
+  public JsBlob getResponseBlob() {
+	return xmlHttpRequest.getResponseBlob();
+  }
+  
+  @Override
+  public <T extends JsObject> T getResponseJson() {
+	return xmlHttpRequest.getResponseJson();
   }
 }

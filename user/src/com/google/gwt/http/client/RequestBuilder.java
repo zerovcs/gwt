@@ -18,9 +18,13 @@ package com.google.gwt.http.client;
 import com.google.gwt.core.client.JavaScriptException;
 import com.google.gwt.xhr.client.ReadyStateChangeHandler;
 import com.google.gwt.xhr.client.XMLHttpRequest;
+import com.google.gwt.xhr.client.XMLHttpRequest.ResponseType;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import jsinterop.JsBlob;
+import jsinterop.JsFormData;
 
 /**
  * Builder for constructing {@link com.google.gwt.http.client.Request} objects.
@@ -120,6 +124,11 @@ public class RequestBuilder {
    */
   private String user;
 
+  /**
+   * Response type to use before perform send method. 
+   */
+  private ResponseType responseType;
+  
   /**
    * Creates a builder using the parameters for configuration.
    * 
@@ -225,6 +234,15 @@ public class RequestBuilder {
   public String getUser() {
     return user;
   }
+ 
+  /**
+   * Returns the response type previously set by {@link #setResponseType(ResponseType)}, or
+   * <code>null</code> if no response type was set.
+   * @return
+   */
+  public ResponseType getResponseType() {
+	return responseType;
+}
 
   /**
    * Sends an HTTP request based on the current builder configuration. If no
@@ -239,7 +257,7 @@ public class RequestBuilder {
    */
   public Request send() throws RequestException {
     StringValidator.throwIfNull("callback", callback);
-    return doSend(requestData, callback);
+    return sendRequest(requestData, callback);
   }
 
   /**
@@ -255,10 +273,75 @@ public class RequestBuilder {
    * @return a {@link Request} object that can be used to track the request
    * @throws NullPointerException if <code>callback</code> <code>null</code>
    */
-  public Request sendRequest(String requestData, RequestCallback callback)
-      throws RequestException {
+  public Request sendRequest(String requestData, RequestCallback callback) throws RequestException {
     StringValidator.throwIfNull("callback", callback);
-    return doSend(requestData, callback);
+    XMLHttpRequest xmlHttpRequest = createXMLHttpRequest();
+    setHeaders(xmlHttpRequest, true);
+    Request request = createRequest(xmlHttpRequest, callback);
+
+    try {
+      xmlHttpRequest.send(requestData);
+    } catch (JavaScriptException e) {
+      throw new RequestException(e.getMessage());
+    }
+
+    return request;
+  }
+
+  /**
+   * Sends an HTTP request based on the current builder configuration with the
+   * specified blob and callback. If no request headers have been set, the
+   * header "Content-Type" will be used with a value of "text/plain;
+   * charset=utf-8". This method does not cache <code>requestData</code> or
+   * <code>callback</code>.
+   * 
+   * @param blob the blob to send as part of the request
+   * @param callback the response handler to be notified when the request fails
+   *          or completes
+   * @return a {@link Request} object that can be used to track the request
+   * @throws NullPointerException if <code>callback</code> <code>null</code>
+   */
+  public Request sendBlob(JsBlob blob, RequestCallback callback) throws RequestException {
+    StringValidator.throwIfNull("callback", callback);
+    XMLHttpRequest xmlHttpRequest = createXMLHttpRequest();
+    setHeaders(xmlHttpRequest, true);
+    Request request = createRequest(xmlHttpRequest, callback);
+
+    try {
+      xmlHttpRequest.send(blob);
+    } catch (JavaScriptException e) {
+      throw new RequestException(e.getMessage());
+    }
+
+    return request;
+  }
+
+  /**
+   * Sends an HTTP request based on the current builder configuration with the
+   * specified blob and callback. The header "Content-Type" with a value of "multipart...;charset=utf-8" will be
+   * automatically added by browser.
+   * This method does not cache <code>requestData</code> or
+   * <code>callback</code>.
+   * 
+   * @param blob the blob to send as part of the request
+   * @param callback the response handler to be notified when the request fails
+   *          or completes
+   * @return a {@link Request} object that can be used to track the request
+   * @throws NullPointerException if <code>callback</code> <code>null</code>
+   */
+  public Request sendFormData(JsFormData formData, RequestCallback callback) throws RequestException {
+    StringValidator.throwIfNull("callback", callback);
+    XMLHttpRequest xmlHttpRequest = createXMLHttpRequest();
+    setHeaders(xmlHttpRequest, false);
+    Request request = createRequest(xmlHttpRequest, callback);
+
+    try {
+      xmlHttpRequest.send(formData);
+    } catch (JavaScriptException e) {
+      throw new RequestException(e.getMessage());
+    }
+
+    return request;
   }
 
   /**
@@ -369,6 +452,14 @@ public class RequestBuilder {
   }
 
   /**
+   * Sets the response type that will be set before send is performed.
+   */
+  public void setResponseType(ResponseType responseType) {
+	StringValidator.throwIfNull("responseType", responseType);
+	this.responseType = responseType;
+  }
+
+  /**
    * Sends an HTTP request based on the current builder configuration. If no
    * request headers have been set, the header "Content-Type" will be used with
    * a value of "text/plain; charset=utf-8".
@@ -378,58 +469,60 @@ public class RequestBuilder {
    * @throws NullPointerException if request data has not been set
    * @throws NullPointerException if a request callback has not been set
    */
-  private Request doSend(String requestData, final RequestCallback callback)
-      throws RequestException {
-    XMLHttpRequest xmlHttpRequest = XMLHttpRequest.create();
+//  private Request doSend(String requestData, final RequestCallback callback) throws RequestException {
+//  }
 
-    try {
-      if (user != null && password != null) {
-        xmlHttpRequest.open(httpMethod, url, user, password);
-      } else if (user != null) {
-        xmlHttpRequest.open(httpMethod, url, user);
-      } else {
-        xmlHttpRequest.open(httpMethod, url);
-      }
-    } catch (JavaScriptException e) {
-      RequestPermissionException requestPermissionException = new RequestPermissionException(
-          url);
-      requestPermissionException.initCause(new RequestException(e.getMessage()));
-      throw requestPermissionException;
-    }
+  
+  private XMLHttpRequest createXMLHttpRequest() throws RequestException
+  {
+		XMLHttpRequest xmlHttpRequest = XMLHttpRequest.create();
 
-    setHeaders(xmlHttpRequest);
-    if (includeCredentials) {
-      xmlHttpRequest.setWithCredentials(true);
-    }
-
-    final Request request = new Request(xmlHttpRequest, timeoutMillis, callback);
-
-    // Must set the onreadystatechange handler before calling send().
-    xmlHttpRequest.setOnReadyStateChange(new ReadyStateChangeHandler() {
-      public void onReadyStateChange(XMLHttpRequest xhr) {
-        if (xhr.getReadyState() == XMLHttpRequest.DONE) {
-          xhr.clearOnReadyStateChange();
-          request.fireOnResponseReceived(callback);
-        }
-      }
-    });
-
-    try {
-      xmlHttpRequest.send(requestData);
-    } catch (JavaScriptException e) {
-      throw new RequestException(e.getMessage());
-    }
-
-    return request;
+		try {
+			if (user != null && password != null) {
+				xmlHttpRequest.open(httpMethod, url, user, password);
+			} else if (user != null) {
+				xmlHttpRequest.open(httpMethod, url, user);
+			} else {
+				xmlHttpRequest.open(httpMethod, url);
+			}
+		} catch (JavaScriptException e) {
+			RequestPermissionException requestPermissionException = new RequestPermissionException(url);
+			requestPermissionException.initCause(new RequestException(e.getMessage()));
+			throw requestPermissionException;
+		}
+	    
+	    if (includeCredentials) {
+	      xmlHttpRequest.setWithCredentials(true);
+	    }
+	    if(responseType != null)
+	    	xmlHttpRequest.setResponseType(responseType);
+		
+		return xmlHttpRequest;
   }
+  
+  private Request createRequest(XMLHttpRequest xmlHttpRequest, final RequestCallback callback)
+  {
+	    final Request request = new Request(xmlHttpRequest, timeoutMillis, callback);
 
+	    // Must set the onreadystatechange handler before calling send().
+	    xmlHttpRequest.setOnReadyStateChange(new ReadyStateChangeHandler() {
+	      public void onReadyStateChange(XMLHttpRequest xhr) {
+	        if (xhr.getReadyState() == XMLHttpRequest.DONE) {
+	          xhr.clearOnReadyStateChange();
+	          request.fireOnResponseReceived(callback);
+	        }
+	      }
+	    });
+	    return request;
+  }
+  
   /*
    * Internal method that actually sets our cached headers on the underlying
    * JavaScript XmlHttpRequest object. If there are no headers set, then we set
    * the "Content-Type" to "text/plain; charset=utf-8". This is really lining us
    * up for integration with RPC.
    */
-  private void setHeaders(XMLHttpRequest xmlHttpRequest)
+  private void setHeaders(XMLHttpRequest xmlHttpRequest, boolean useDefault)
       throws RequestException {
     if (headers != null && headers.size() > 0) {
       for (Map.Entry<String, String> header : headers.entrySet()) {
@@ -439,9 +532,8 @@ public class RequestBuilder {
           throw new RequestException(e.getMessage());
         }
       }
-    } else {
-      xmlHttpRequest.setRequestHeader("Content-Type",
-          "text/plain; charset=utf-8");
+    } else if(useDefault) { 
+      xmlHttpRequest.setRequestHeader("Content-Type", "text/plain; charset=utf-8");
     }
   }
 }

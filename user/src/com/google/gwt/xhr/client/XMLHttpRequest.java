@@ -18,8 +18,8 @@ package com.google.gwt.xhr.client;
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.typedarrays.shared.ArrayBuffer;
 
+import jsinterop.JsFormData;
 import jsinterop.JsObject;
-
 import jsinterop.JsBlob;
 
 /**
@@ -190,10 +190,20 @@ public class XMLHttpRequest extends JavaScriptObject {
     return this.upload;
   }-*/;
   
+  /**
+   * Gets response as JSON - not supported by IE 11 - from Edge on
+   * @return JSON containing the response or null if the
+   *     request is in progress or failed
+   */
   public final native <T extends JsObject> T getResponseJson() /*-{
     return this.response;
   }-*/;
   
+  /**
+   * Gets response as JsBlob 
+   * @return Blob containing the response or null if the
+   *     request is in progress or failed
+   */
   public final native JsBlob getResponseBlob() /*-{
     return this.response;
   }-*/;
@@ -309,11 +319,11 @@ public class XMLHttpRequest extends JavaScriptObject {
    * no-argument <code>send()</code> method is unavailable on Firefox.
    */
   public final void send() {
-    send(null);
+    send((String)null);
   }
 
   /**
-   * Initiates a request with data.  If there is no data, specify null.
+   * Initiates a request with data. If there is no data, specify null.
    * <p>
    * See <a href="http://www.w3.org/TR/XMLHttpRequest/#the-send-method"
    * >http://www.w3.org/TR/XMLHttpRequest/#the-send-method</a>.
@@ -322,6 +332,30 @@ public class XMLHttpRequest extends JavaScriptObject {
    */
   public final native void send(String requestData) /*-{
     this.send(requestData);
+  }-*/;
+
+  /**
+   * Initiates a request with FormData. If there is no data, specify null.
+   * <p>
+   * See <a href="http://www.w3.org/TR/XMLHttpRequest/#the-send-method"
+   * >http://www.w3.org/TR/XMLHttpRequest/#the-send-method</a>.
+   * 
+   * @param requestData the data to be sent with the request
+   */
+  public final native void send(JsBlob blob) /*-{
+    this.send(blob);
+  }-*/;
+
+  /**
+   * Initiates a request with FormData. If there is no data, specify null.
+   * <p>
+   * See <a href="http://www.w3.org/TR/XMLHttpRequest/#the-send-method"
+   * >http://www.w3.org/TR/XMLHttpRequest/#the-send-method</a>.
+   * 
+   * @param requestData the data to be sent with the request
+   */
+  public final native void send(JsFormData formData) /*-{
+    this.send(formData);
   }-*/;
 
   /**
