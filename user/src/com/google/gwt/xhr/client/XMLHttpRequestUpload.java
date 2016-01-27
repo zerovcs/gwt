@@ -1,10 +1,10 @@
-package si.test.client.jsinterop;
+package com.google.gwt.xhr.client;
 
-import si.test.client.jsinterop.event.ProgressEvent;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
+import jsinterop.event.ProgressEvent;
 
 @JsType(isNative=true, namespace=JsPackage.GLOBAL)
 public interface XMLHttpRequestUpload 
