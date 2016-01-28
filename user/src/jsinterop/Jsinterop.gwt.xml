@@ -1,0 +1,5 @@
+<module>
+    <inherits name="jsinterop.annotations.Annotations" />
+	<inherits name="jsinterop.event.Event" />
+    <source path="" />
+</module>
