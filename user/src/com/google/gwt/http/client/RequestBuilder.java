@@ -19,6 +19,7 @@ import com.google.gwt.core.client.JavaScriptException;
 import com.google.gwt.xhr.client.ReadyStateChangeHandler;
 import com.google.gwt.xhr.client.XMLHttpRequest;
 import com.google.gwt.xhr.client.XMLHttpRequest.ResponseType;
+import com.google.gwt.xhr.client.XMLHttpRequestUpload.ProgressEventListener;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -128,6 +129,11 @@ public class RequestBuilder {
    * Response type to use before perform send method. 
    */
   private ResponseType responseType;
+  
+  /**
+   * Listener that is invoked when upload progress events occur
+   */
+  private ProgressEventListener progressEventListener;
   
   /**
    * Creates a builder using the parameters for configuration.
@@ -460,6 +466,13 @@ public class RequestBuilder {
   }
 
   /**
+   * Sets the progress event listener. Intended for handling upload progress events.
+   */
+  public void setProgressEventListener(ProgressEventListener progressEventListener) {
+	this.progressEventListener = progressEventListener;
+  }
+  
+  /**
    * Sends an HTTP request based on the current builder configuration. If no
    * request headers have been set, the header "Content-Type" will be used with
    * a value of "text/plain; charset=utf-8".
@@ -497,6 +510,8 @@ public class RequestBuilder {
 	    if(responseType != null)
 	    	xmlHttpRequest.setResponseType(responseType);
 		
+	    if(progressEventListener != null)
+	    	xmlHttpRequest.upload().setOnprogress(progressEventListener);
 		return xmlHttpRequest;
   }
   
