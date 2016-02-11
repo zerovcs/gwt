@@ -10,6 +10,6 @@ public class FileReader
 {
 	@JsProperty public native String getResult();
 	@JsProperty public native void setOnloadend(EventListener listener);
-	//TODO še ostale event listener-je. 
+	//TODO se ostale event listener-je. 
 	public native void readAsText(Blob blob);
 }
