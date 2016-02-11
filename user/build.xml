@@ -59,6 +59,7 @@
 
   <!-- Platform shouldn't matter here, just picking one -->
   <property.ensure name="gwt.dev.jar" location="${gwt.build.lib}/gwt-dev.jar"/>
+  <property.ensure name="gwt.elemental.jfw.jar" location="${gwt.build.lib}/gwt-elemental-jfw.jar"/>
 
   <!--
     Classpaths added for test cases
@@ -98,6 +99,7 @@
     <pathelement location="${gwt.tools.lib}/testng/testng-5.14.1-sources.jar"/>
     <pathelement location="${gwt.tools.lib}/testng/testng-5.14.1-nojunit.jar"/>
     <pathelement location="${gwt.dev.jar}"/>
+	<pathelement location="${gwt.elemental.jfw.jar}"/>
     <pathelement location="${gwt.tools.lib}/gss/2015-11-04/closure-stylesheets-library-20151104-rebased.jar"/>
   </path>
 
@@ -125,6 +127,7 @@
         <pathelement
             location="${gwt.tools.lib}/streamhtmlparser/streamhtmlparser-jsilver-r10/streamhtmlparser-jsilver-r10-1.5-rebased.jar"/>
         <pathelement location="${gwt.dev.jar}"/>
+        <pathelement location="${gwt.elemental.jfw.jar}"/>
       </classpath>
     </gwt.javac>
   </target>

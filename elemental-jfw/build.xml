@@ -1,0 +1,28 @@
+<project name="elemental-jfw" default="build" basedir=".">
+  <property name="gwt.root" location=".." />
+  <property name="project.tail" value="elemental-jfw" />
+  <import file="${gwt.root}/common.ant.xml" />
+
+  <property.ensure name="gwt.dev.jar" location="${gwt.build.lib}/gwt-dev.jar" />
+
+  <target name="compile">
+    <mkdir dir="${javac.out}" />
+    <gwt.javac srcdir="src">
+      <src path="${gwt.root}/user/src/jsinterop/annotations"/>
+
+      <classpath>
+        <pathelement location="${gwt.dev.jar}"/>
+      </classpath>
+    </gwt.javac>
+  </target>
+
+  <target name="build" depends="compile" description="builds gwt-elemental-jfw.jar">
+    <gwt.jar>
+      <fileset dir="${javac.out}">
+		<exclude name="annotation/*.class"/>
+	  </fileset>
+      <fileset dir="src"/>
+    </gwt.jar>
+  </target>
+
+</project>
