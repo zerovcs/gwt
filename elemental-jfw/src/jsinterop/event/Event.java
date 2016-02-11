@@ -4,7 +4,7 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 @JsType(isNative=true, namespace=JsPackage.GLOBAL)
-interface Event 
+public interface Event 
 {
    /**
      * Cancels the event (if it is cancelable).
