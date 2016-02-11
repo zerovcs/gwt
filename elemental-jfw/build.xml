@@ -19,7 +19,7 @@
   <target name="build" depends="compile" description="builds gwt-elemental-jfw.jar">
     <gwt.jar>
       <fileset dir="${javac.out}">
-		<exclude name="annotation/*.class"/>
+		<exclude name="**/annotations/"/>
 	  </fileset>
       <fileset dir="src"/>
     </gwt.jar>
