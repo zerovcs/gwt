@@ -1,6 +1,5 @@
 package jsinterop.html;
 
-import com.google.gwt.dom.client.Element;
 
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
