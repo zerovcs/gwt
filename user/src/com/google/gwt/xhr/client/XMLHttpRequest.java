@@ -15,12 +15,12 @@
  */
 package com.google.gwt.xhr.client;
 
+import jsinterop.js.Blob;
+import jsinterop.js.FormData;
+import jsinterop.js.JsObject;
+
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.typedarrays.shared.ArrayBuffer;
-
-import jsinterop.JsFormData;
-import jsinterop.JsObject;
-import jsinterop.JsBlob;
 
 /**
  * The native XMLHttpRequest object. Most applications should use the higher-
@@ -204,7 +204,7 @@ public class XMLHttpRequest extends JavaScriptObject {
    * @return Blob containing the response or null if the
    *     request is in progress or failed
    */
-  public final native JsBlob getResponseBlob() /*-{
+  public final native Blob getResponseBlob() /*-{
     return this.response;
   }-*/;
 
@@ -342,7 +342,7 @@ public class XMLHttpRequest extends JavaScriptObject {
    * 
    * @param requestData the data to be sent with the request
    */
-  public final native void send(JsBlob blob) /*-{
+  public final native void send(Blob blob) /*-{
     this.send(blob);
   }-*/;
 
@@ -354,7 +354,7 @@ public class XMLHttpRequest extends JavaScriptObject {
    * 
    * @param requestData the data to be sent with the request
    */
-  public final native void send(JsFormData formData) /*-{
+  public final native void send(FormData formData) /*-{
     this.send(formData);
   }-*/;
 

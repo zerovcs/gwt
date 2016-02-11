@@ -24,8 +24,8 @@ import com.google.gwt.xhr.client.XMLHttpRequestUpload.ProgressEventListener;
 import java.util.HashMap;
 import java.util.Map;
 
-import jsinterop.JsBlob;
-import jsinterop.JsFormData;
+import jsinterop.js.FormData;
+import jsinterop.js.Blob;
 
 /**
  * Builder for constructing {@link com.google.gwt.http.client.Request} objects.
@@ -307,7 +307,7 @@ public class RequestBuilder {
    * @return a {@link Request} object that can be used to track the request
    * @throws NullPointerException if <code>callback</code> <code>null</code>
    */
-  public Request sendBlob(JsBlob blob, RequestCallback callback) throws RequestException {
+  public Request sendBlob(Blob blob, RequestCallback callback) throws RequestException {
     StringValidator.throwIfNull("callback", callback);
     XMLHttpRequest xmlHttpRequest = createXMLHttpRequest();
     setHeaders(xmlHttpRequest, true);
@@ -335,7 +335,7 @@ public class RequestBuilder {
    * @return a {@link Request} object that can be used to track the request
    * @throws NullPointerException if <code>callback</code> <code>null</code>
    */
-  public Request sendFormData(JsFormData formData, RequestCallback callback) throws RequestException {
+  public Request sendFormData(FormData formData, RequestCallback callback) throws RequestException {
     StringValidator.throwIfNull("callback", callback);
     XMLHttpRequest xmlHttpRequest = createXMLHttpRequest();
     setHeaders(xmlHttpRequest, false);

@@ -1,4 +1,4 @@
-package jsinterop;
+package jsinterop.js;
 
 import jsinterop.annotations.JsPackage;
 

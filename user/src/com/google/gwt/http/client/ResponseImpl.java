@@ -15,13 +15,13 @@
  */
 package com.google.gwt.http.client;
 
-import com.google.gwt.xhr.client.XMLHttpRequest;
-
 import java.util.ArrayList;
 import java.util.List;
 
-import jsinterop.JsBlob;
-import jsinterop.JsObject;
+import jsinterop.js.Blob;
+import jsinterop.js.JsObject;
+
+import com.google.gwt.xhr.client.XMLHttpRequest;
 
 /**
  * A {@link Response} implementation based on a {@link XMLHttpRequest}.
@@ -111,7 +111,7 @@ class ResponseImpl extends Response {
   }
   
   @Override
-  public JsBlob getResponseBlob() {
+  public Blob getResponseBlob() {
 	return xmlHttpRequest.getResponseBlob();
   }
   

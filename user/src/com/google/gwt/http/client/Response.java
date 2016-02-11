@@ -15,8 +15,8 @@
  */
 package com.google.gwt.http.client;
 
-import jsinterop.JsBlob;
-import jsinterop.JsObject;
+import jsinterop.js.Blob;
+import jsinterop.js.JsObject;
 
 /**
  * Wrapper which provides access to the components of an HTTP response.
@@ -134,5 +134,5 @@ public abstract class Response {
    * @return Blob containing the response or null if the
    *     request is in progress or failed
    */
-  public abstract JsBlob getResponseBlob();
+  public abstract Blob getResponseBlob();
 }
