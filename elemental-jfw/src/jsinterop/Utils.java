@@ -25,7 +25,7 @@ public final class Utils
 	 * Returns the global Document.
 	 */
 	@JsProperty(name = "document", namespace = JsPackage.GLOBAL)
-    public static Document getDocument;
+  public static native Document getDocument();
 
 	/**
 	 * Parse text as JSON
