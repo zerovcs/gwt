@@ -22,7 +22,7 @@ public class Window
      *
      * @return The Document object for the window
      */
-    @JsProperty public static native Document document();
+    @JsProperty public static native Document getDocument();
 
     /**
      * The innerWidth property returns the inner width of a window's content area.
