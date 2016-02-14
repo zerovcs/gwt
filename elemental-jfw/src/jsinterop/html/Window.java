@@ -59,8 +59,7 @@ public class Window
      *
      * @return A reference to the local storage
      */
-//    TODO
-//    @JsProperty public static native Storage getLocalStorage();
+    @JsProperty public static native Storage getLocalStorage();
 
     /**
      * Returns a reference to the local storage object used to store data. Stores data for one session (lost
@@ -68,8 +67,7 @@ public class Window
      *
      * @return A reference to the local session storage object
      */
-//    TODO
-//    @JsProperty public static native Storage getSessionStorage();
+    @JsProperty public static native Storage getSessionStorage();
 
     /**
      * Displays an alert box with a specified message and an OK button.
