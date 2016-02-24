@@ -18,8 +18,6 @@ package com.google.gwt.http.client;
 import java.util.ArrayList;
 import java.util.List;
 
-import jsinterop.js.Blob;
-import jsinterop.js.JsObject;
 
 import com.google.gwt.xhr.client.XMLHttpRequest;
 
@@ -111,12 +109,12 @@ class ResponseImpl extends Response {
   }
   
   @Override
-  public Blob getResponseBlob() {
-	return xmlHttpRequest.getResponseBlob();
+  public <T extends Object> T getResponseBlob() {
+    return xmlHttpRequest.getResponseBlob();
   }
   
   @Override
-  public <T extends JsObject> T getResponseJson() {
+  public <T extends Object> T getResponseJson() {
 	return xmlHttpRequest.getResponseJson();
   }
 }

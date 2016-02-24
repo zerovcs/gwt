@@ -15,9 +15,6 @@
  */
 package com.google.gwt.xhr.client;
 
-import jsinterop.js.Blob;
-import jsinterop.js.FormData;
-import jsinterop.js.JsObject;
 
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.typedarrays.shared.ArrayBuffer;
@@ -195,7 +192,7 @@ public class XMLHttpRequest extends JavaScriptObject {
    * @return JSON containing the response or null if the
    *     request is in progress or failed
    */
-  public final native <T extends JsObject> T getResponseJson() /*-{
+  public final native <T extends Object> T getResponseJson() /*-{
     return this.response;
   }-*/;
   
@@ -204,7 +201,7 @@ public class XMLHttpRequest extends JavaScriptObject {
    * @return Blob containing the response or null if the
    *     request is in progress or failed
    */
-  public final native Blob getResponseBlob() /*-{
+  public final native <T extends Object> T getResponseBlob() /*-{
     return this.response;
   }-*/;
 
@@ -335,14 +332,14 @@ public class XMLHttpRequest extends JavaScriptObject {
   }-*/;
 
   /**
-   * Initiates a request with FormData. If there is no data, specify null.
+   * Initiates a request with FormData or Blob. If there is no data, specify null.
    * <p>
    * See <a href="http://www.w3.org/TR/XMLHttpRequest/#the-send-method"
    * >http://www.w3.org/TR/XMLHttpRequest/#the-send-method</a>.
    * 
    * @param requestData the data to be sent with the request
    */
-  public final native void send(Blob blob) /*-{
+  public final native void send(Object blob) /*-{
     this.send(blob);
   }-*/;
 
@@ -354,9 +351,9 @@ public class XMLHttpRequest extends JavaScriptObject {
    * 
    * @param requestData the data to be sent with the request
    */
-  public final native void send(FormData formData) /*-{
-    this.send(formData);
-  }-*/;
+//  public final native void send(FormData formData) /*-{
+//    this.send(formData);
+//  }-*/;
 
   /**
    * Sets the {@link ReadyStateChangeHandler} to be notified when the object's

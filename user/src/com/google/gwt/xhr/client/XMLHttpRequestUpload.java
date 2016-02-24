@@ -4,7 +4,6 @@ import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
-import jsinterop.event.ProgressEvent;
 
 @JsType(isNative=true, namespace=JsPackage.GLOBAL)
 public interface XMLHttpRequestUpload 
@@ -14,6 +13,6 @@ public interface XMLHttpRequestUpload
 	@JsFunction
 	public interface ProgressEventListener
 	{
-		public void handleEvent(ProgressEvent progressEvent);
+		public void handleEvent(Object progressEvent);
 	}
 }
