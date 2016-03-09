@@ -3,6 +3,8 @@ package jsinterop.html;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
+import jsinterop.event.EventListener;
+import jsinterop.js.Blob;
 
 /**
  * The window object represents an open window in a browser.
@@ -75,4 +77,27 @@ public class Window
      * @param message The text to display in the alert box
      */
     public static native void alert(String message);
+    
+    /**
+     * Register an event handler to a specific event type on the window.
+     * @param type
+     * @param listener
+     * @param useCapture
+     */
+    public static native void addEventListener(String type, EventListener listener, boolean useCapture);
+    
+    /**
+     * Provides a secure means for one window to send a string of data to another window, which need not be within the same domain as the first.
+     */
+    public static native void postMessage(String message, String targetOrigin);
+
+    /**
+     * Provides a secure means for one window to send a string of data to another window, which need not be within the same domain as the first.
+     */
+    public static native void postMessage(Blob message, String targetOrigin);
+
+    /**
+     * Provides a secure means for one window to send a string of data to another window, which need not be within the same domain as the first.
+     */
+//    public static native void postMessage(ArrayBuffer message, String targetOrigin); TODO
 }
