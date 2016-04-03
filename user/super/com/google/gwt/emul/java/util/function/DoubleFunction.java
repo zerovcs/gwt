@@ -13,13 +13,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package java.util;
+package java.util.function;
 
-import com.google.gwt.core.client.JavaScriptObject;
+/**
+ * See <a href="https://docs.oracle.com/javase/8/docs/api/java/util/function/DoubleFunction.html">
+ * the official Java API doc</a> for details.
+ *
+ * @param <R> type of the return value
+ */
+@FunctionalInterface
+public interface DoubleFunction<R> {
 
-class InternalJsIteratorEntry<V> extends JavaScriptObject {
-  protected InternalJsIteratorEntry() { }
-  public final native boolean done() /*-{ return this.done; }-*/;
-  public final native String getKey() /*-{ return this.value[0]; }-*/;
-  public final native V getValue() /*-{ return this.value[1]; }-*/;
+  R apply(double value);
 }

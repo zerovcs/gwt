@@ -19,7 +19,7 @@ import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
- * Test class for checking UiBinder casting to a JsType like this one.
+ * Test class for checking UiBinder casting to a JsType interface like this one.
  */
 @JsType(isNative = true)
 public interface TestJsElementType {

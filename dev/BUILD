@@ -338,11 +338,3 @@ GwtTestSuites(
     tests = GWT_DEV_TESTS,
     deps = [":dev-test-code"],
 )
-
-filegroup(
-    name = "emul",
-    srcs = glob([
-        "core/super/javaemul/**/*.java",
-    ]),
-    visibility = ["//third_party/java_src/j2cl:__subpackages__"],
-)

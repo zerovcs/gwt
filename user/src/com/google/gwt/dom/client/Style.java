@@ -16,6 +16,7 @@
 package com.google.gwt.dom.client;
 
 import com.google.gwt.core.client.JavaScriptObject;
+import com.google.gwt.safehtml.shared.annotations.IsSafeUri;
 
 /**
  * Provides programmatic access to properties of the style object.
@@ -385,6 +386,18 @@ public class Style extends JavaScriptObject {
       @Override
       public String getCssName() {
         return DISPLAY_INITIAL;
+      }
+    },
+    FLEX {
+      @Override
+      public String getCssName() {
+        return DISPLAY_FLEX;
+      }
+    },
+    INLINE_FLEX {
+      @Override
+      public String getCssName() {
+        return DISPLAY_INLINE_FLEX;
       }
     };
     @Override
@@ -1018,6 +1031,8 @@ public class Style extends JavaScriptObject {
   private static final String DISPLAY_TABLE_COLUMN = "table-column";
   private static final String DISPLAY_TABLE_ROW = "table-row";
   private static final String DISPLAY_INITIAL = "initial";
+  private static final String DISPLAY_FLEX = "flex";
+  private static final String DISPLAY_INLINE_FLEX = "inline-flex";
 
   private static final String FLOAT_LEFT = "left";
   private static final String FLOAT_RIGHT = "right";
@@ -1863,7 +1878,7 @@ public class Style extends JavaScriptObject {
   /**
    * Set the background-image css property.
    */
-  public final void setBackgroundImage(String value) {
+  public final void setBackgroundImage(@IsSafeUri String value) {
     setProperty(STYLE_BACKGROUND_IMAGE, value);
   }
 

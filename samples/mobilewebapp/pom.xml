@@ -13,7 +13,7 @@
     <!-- Convenience property to set the GWT version -->
     <gwt.version>2.8.0-SNAPSHOT</gwt.version>
 
-    <!-- GWT needs at least java 1.6 -->
+    <!-- GWT needs at least java 1.7 -->
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
 
@@ -32,7 +32,7 @@
   <!-- Running with Maven -->
   <!-- mvn clean package -->
   <!-- mvn appengine:devserver_start - start web server -->
-  <!-- mvn gwt:run-codeserver - start gwt code server -->
+  <!-- mvn gwt:codeserver - start gwt code server -->
   <!-- goto http://localhost:8080 -->
   <!-- mvn appengine:devserver_stop - stop web server -->
 
@@ -59,12 +59,6 @@
     <dependency>
       <groupId>com.google.gwt</groupId>
       <artifactId>gwt-dev</artifactId>
-      <!-- "provided" so that we don't deploy -->
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.google.gwt</groupId>
-      <artifactId>gwt-codeserver</artifactId>
       <!-- "provided" so that we don't deploy -->
       <scope>provided</scope>
     </dependency>
@@ -108,12 +102,12 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
-      <version>1.6.1</version>
+      <version>1.7.12</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>1.6.1</version>
+      <version>1.7.12</version>
     </dependency>
 
     <!-- Google App Engine (GAE) -->
@@ -187,50 +181,35 @@
 
       <!-- GWT Maven Plugin-->
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
+        <groupId>net.ltgt.gwt.maven</groupId>
         <artifactId>gwt-maven-plugin</artifactId>
-        <version>${gwt.version}</version>
+        <version>1.0-rc-6</version>
         <executions>
           <execution>
             <goals>
+              <goal>import-sources</goal>
               <goal>compile</goal>
             </goals>
           </execution>
-          <execution>
-            <!-- Run tests through gwt:test, this allows reusing the plugin configuration for GWTTestCases -->
-            <id>gwt-tests</id>
-            <phase>test</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-          </execution>
         </executions>
-
-        <!-- Plugin configuration. There are many available options,
-             see gwt-maven-plugin documentation at codehaus.org -->
         <configuration>
-          <!-- URL that should be opened by DevMode (gwt:run). -->
-          <runTarget>MobileWebApp.html</runTarget>
-          <!-- Ask GWT to create the Story of Your Compile (SOYC) (gwt:compile) -->
-          <compileReport>true</compileReport>
-          <compilerMetrics>true</compilerMetrics>
-          <modules>
-            <module>com.google.gwt.sample.mobilewebapp.MobileWebApp</module>
-          </modules>
-
-          <logLevel>INFO</logLevel>
-          <style>${gwt.style}</style>
-
-          <copyWebapp>true</copyWebapp>
-          
-          <!-- mvn gwt:run-codeserver - won't have to use the bookmarklet -->
+          <moduleName>com.google.gwt.sample.mobilewebapp.MobileWebApp</moduleName>
+          <moduleShortName>MobileWebApp</moduleShortName>
+          <failOnError>true</failOnError>
+          <!-- Compiler configuration -->
+          <compilerArgs>
+            <!-- Ask GWT to create the Story of Your Compile (SOYC) (gwt:compile) -->
+            <arg>-compileReport</arg>
+            <arg>-XcompilerMetrics</arg>
+          </compilerArgs>
+          <!-- DevMode configuration -->
           <launcherDir>${project.build.directory}/${project.build.finalName}</launcherDir>
-
-          <!-- Run tests using HtmlUnit -->
-          <mode>htmlunit</mode>
-          <!-- Tests patterns -->
-          <includes>**/Test*.java,**/*Test.java,**/*TestCase.java</includes>
-         </configuration>
+          <classpathScope>compile+runtime</classpathScope>
+          <!-- URL(s) that should be opened by DevMode (gwt:devmode). -->
+          <startupUrls>
+            <startupUrl>MobileWebApp.html</startupUrl>
+          </startupUrls>
+        </configuration>
       </plugin>
 
       <!-- Google App Engine Plugin -->
@@ -248,15 +227,6 @@
           <!-- Uncomment the snippet below to enable local debugging with a remove debugger like those included with Eclipse 
             or IntelliJ -->
           <!-- <jvmFlags><jvmFlag>-agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n</jvmFlag></jvmFlags> -->
-        </configuration>
-      </plugin>
-
-      <!-- Skip normal test execution, we use gwt:test instead -->
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.17</version>
-        <configuration>
-          <skip>true</skip>
         </configuration>
       </plugin>
 
@@ -279,26 +249,4 @@
       </snapshots>
     </repository>
   </repositories>
-  <pluginRepositories>
-    <pluginRepository>
-      <id>google-snapshots</id>
-      <url>https://oss.sonatype.org/content/repositories/google-snapshots/</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </pluginRepository>
-    <pluginRepository>
-      <id>gwt-plugin-snapshots</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </pluginRepository>
-  </pluginRepositories>
 </project>

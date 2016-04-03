@@ -29,9 +29,12 @@ import javaemul.internal.ArrayHelper;
 import javaemul.internal.EmulatedCharset;
 import javaemul.internal.HashCodes;
 import javaemul.internal.JsUtils;
+import javaemul.internal.NativeRegExp;
 import javaemul.internal.annotations.DoNotInline;
-
 import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 /**
  * Intrinsic string class.
@@ -111,9 +114,9 @@ public final class String implements Comparable<String>, CharSequence,
     return "" + x;
   }
 
-  public static native String valueOf(char x) /*-{
-    return String.fromCharCode(x);
-  }-*/;
+  public static String valueOf(char x) {
+    return NativeString.fromCharCode(x);
+  }
 
   public static String valueOf(char x[], int offset, int count) {
     int end = offset + count;
@@ -131,9 +134,17 @@ public final class String implements Comparable<String>, CharSequence,
     return s;
   }
 
-  private static native String fromCharCode(Object array) /*-{
-    return String.fromCharCode.apply(null, array);
-  }-*/;
+  private static String fromCharCode(Object[] array) {
+    return getFromCharCodeFunction().apply(null, array);
+  }
+
+  @JsType(isNative = true, name = "Function", namespace = JsPackage.GLOBAL)
+  private static class NativeFunction<T> {
+    public native T apply(Object thisContext, Object[] argsArray);
+  }
+
+  @JsProperty(name = "fromCharCode", namespace = "String")
+  private static native NativeFunction<String> getFromCharCodeFunction();
 
   public static String valueOf(char[] x) {
     return valueOf(x, 0, x.length);
@@ -161,12 +172,6 @@ public final class String implements Comparable<String>, CharSequence,
     return x == null ? "null" : x.toString();
   }
 
-  // CHECKSTYLE_OFF: This class has special needs.
-
-  static native String __substr(String str, int beginIndex, int len) /*-{
-    return str.substr(beginIndex, len);
-  }-*/;
-
   /**
    * This method converts Java-escaped dollar signs "\$" into JavaScript-escaped
    * dollar signs "$$", and removes all other lone backslashes, which serve as
@@ -187,8 +192,6 @@ public final class String implements Comparable<String>, CharSequence,
     return replaceStr;
   }
 
-  // CHECKSTYLE_ON
-
   private static native int compareTo(String thisStr, String otherStr) /*-{
     if (thisStr == otherStr) {
       return 0;
@@ -204,7 +207,7 @@ public final class String implements Comparable<String>, CharSequence,
     }
   }
 
-  private static String fromCodePoint(int codePoint) {
+  static String fromCodePoint(int codePoint) {
     if (codePoint >= Character.MIN_SUPPLEMENTARY_CODE_POINT) {
       char hiSurrogate = Character.getHighSurrogate(codePoint);
       char loSurrogate = Character.getLowSurrogate(codePoint);
@@ -335,14 +338,18 @@ public final class String implements Comparable<String>, CharSequence,
     $createString(sb);
   }
 
+  private NativeString asNativeString() {
+    return toNative(this);
+  }
+
+  private static native NativeString toNative(String str) /*-{
+    return str;
+  }-*/;
+
   @Override
   public char charAt(int index) {
-    return charAt(this, index);
+    return asNativeString().charCodeAt(index);
   }
-  
-  private static native char charAt(String s, int index) /*-{
-    return s.charCodeAt(index);
-  }-*/;
 
   public int codePointAt(int index) {
     return Character.codePointAt(this, index, length());
@@ -366,12 +373,8 @@ public final class String implements Comparable<String>, CharSequence,
   }
 
   public String concat(String str) {
-    return concat(this, str);
+    return this + str;
   }
-  
-  private static native String concat(String s, String str) /*-{
-    return s + str;
-  }-*/;
 
   public boolean contains(CharSequence s) {
     return indexOf(s.toString()) != -1;
@@ -388,7 +391,7 @@ public final class String implements Comparable<String>, CharSequence,
   public boolean endsWith(String suffix) {
     // If IE8 supported negative start index, we could have just used "-suffixlength".
     int suffixlength = suffix.length();
-    return __substr(this, length() - suffixlength, suffixlength).equals(suffix);
+    return asNativeString().substr(length() - suffixlength, suffixlength).equals(suffix);
   }
 
   // Marked with @DoNotInline because we don't have static eval for "==" yet.
@@ -403,7 +406,7 @@ public final class String implements Comparable<String>, CharSequence,
   public boolean equalsIgnoreCase(String other) {
     return equalsIgnoreCase(this, other);
   }
-  
+
   private static native boolean equalsIgnoreCase(String s, String other) /*-{
     if (other == null) {
       return false;
@@ -447,21 +450,13 @@ public final class String implements Comparable<String>, CharSequence,
   }
 
   public int indexOf(String str) {
-    return indexOf(this, str);
+    return asNativeString().indexOf(str);
   }
 
-  private static native int indexOf(String s, String str) /*-{
-    return s.indexOf(str);
-  }-*/;
-  
   public int indexOf(String str, int startIndex) {
-    return indexOf(this, str, startIndex);
+    return asNativeString().indexOf(str, startIndex);
   }
   
-  private static native int indexOf(String s, String str, int startIndex) /*-{
-    return s.indexOf(str, startIndex);
-  }-*/;
-
   public String intern() {
     return this;
   }
@@ -479,29 +474,17 @@ public final class String implements Comparable<String>, CharSequence,
   }
 
   public int lastIndexOf(String str) {
-    return lastIndexOf(this, str);
+    return asNativeString().lastIndexOf(str);
   }
   
-  private static native int lastIndexOf(String s, String str) /*-{
-    return s.lastIndexOf(str);
-  }-*/;
-
   public int lastIndexOf(String str, int start) {
-    return lastIndexOf(this, str, start);
+    return asNativeString().lastIndexOf(str, start);
   }
   
-  private static native int lastIndexOf(String s, String str, int start) /*-{
-    return s.lastIndexOf(str, start);
-  }-*/;
-
   @Override
   public int length() {
-    return length(this);
+    return asNativeString().length;
   }
-
-  private static native int length(String s) /*-{
-    return s.length;
-  }-*/;
 
   /**
    * Regular expressions vary from the standard implementation. The
@@ -512,14 +495,13 @@ public final class String implements Comparable<String>, CharSequence,
    * TODO(jat): properly handle Java regex syntax
    */
   public boolean matches(String regex) {
-    return matches(this, regex);
+    // We surround the regex with '^' and '$' because it must match the entire string.
+    return nativeMatches(new NativeRegExp("^(" + regex + ")$"));
   }
-  
-  private static native boolean matches(String s, String regex) /*-{
-    // We surround the regex with '^' and '$' because it must match
-    // the entire string.
-    return new RegExp('^(' + regex + ')$').test(s);
-  }-*/;
+
+  boolean nativeMatches(NativeRegExp regex) {
+    return regex.test(this);
+  }
 
   public int offsetByCodePoints(int index, int codePointOffset) {
     return Character.offsetByCodePoints(this, index, codePointOffset);
@@ -537,8 +519,8 @@ public final class String implements Comparable<String>, CharSequence,
       return false;
     }
 
-    String left = __substr(this, toffset, len);
-    String right = __substr(other, ooffset, len);
+    String left = asNativeString().substr(toffset, len);
+    String right = other.asNativeString().substr(ooffset, len);
     return ignoreCase ? left.equalsIgnoreCase(right) : left.equals(right);
   }
 
@@ -552,14 +534,9 @@ public final class String implements Comparable<String>, CharSequence,
     // in order to escape regexp special characters (e.g. '.').
     String hex = Integer.toHexString(from);
     String regex = "\\u" + "0000".substring(hex.length()) + hex;
-    Object jsRegEx = createRegExp(regex, "g");
-    String replace = fromCharCode(to);
-    return replace(this, jsRegEx, replace);
+    String replace = NativeString.fromCharCode(to);
+    return nativeReplaceAll(regex, replace);
   }
-
-  private static native String fromCharCode(char to) /*-{
-    return String.fromCharCode(to);
-  }-*/;
 
   public String replace(CharSequence from, CharSequence to) {
     // Implementation note: This uses a regex replacement instead of
@@ -587,8 +564,11 @@ public final class String implements Comparable<String>, CharSequence,
    */
   public String replaceAll(String regex, String replace) {
     replace = translateReplaceString(replace);
-    Object jsRegEx = createRegExp(regex, "g");
-    return replace(this, jsRegEx, replace);
+    return nativeReplaceAll(regex, replace);
+  }
+
+  String nativeReplaceAll(String regex, String replace) {
+    return asNativeString().replace(new NativeRegExp(regex, "g"), replace);
   }
 
   /**
@@ -601,25 +581,9 @@ public final class String implements Comparable<String>, CharSequence,
    */
   public String replaceFirst(String regex, String replace) {
     replace = translateReplaceString(replace);
-    Object jsRegEx = createRegExp(regex, "");
-    return replace(this, jsRegEx, replace);
+    NativeRegExp jsRegEx = new NativeRegExp(regex);
+    return asNativeString().replace(jsRegEx, replace);
   }
-
-  private static native Object createRegExp(String regex, String mode) /*-{
-    return RegExp(regex, mode);
-  }-*/;
-
-  private static native Object execRegExp(Object regex, String value) /*-{
-    return regex.exec(value);
-  }-*/;
-
-  private static native int resetRegExpLastIndex(Object compiledRegEx) /*-{
-    compiledRegEx.lastIndex = 0;
-  }-*/;
-
-  private static native String replace(String s, Object regex, String replace) /*-{
-    return s.replace(regex, replace);
-  }-*/;
 
   private static native int getMatchIndex(Object matchObject) /*-{
     return matchObject.index;
@@ -649,7 +613,7 @@ public final class String implements Comparable<String>, CharSequence,
    */
   public String[] split(String regex, int maxMatch) {
     // The compiled regular expression created from the string
-    Object compiled = createRegExp(regex, "g");
+    NativeRegExp compiled = new NativeRegExp(regex, "g");
     // the Javascipt array to hold the matches prior to conversion
     String[] out = new String[0];
     // how many matches performed so far
@@ -664,7 +628,7 @@ public final class String implements Comparable<String>, CharSequence,
     while (true) {
       // None of the information in the match returned are useful as we have no
       // subgroup handling
-      Object matchObj = execRegExp(compiled, trail);
+      Object matchObj = compiled.exec(trail);
       if (matchObj == null || trail == "" || (count == (maxMatch - 1) && maxMatch > 0)) {
         out[count] = trail;
         break;
@@ -673,7 +637,7 @@ public final class String implements Comparable<String>, CharSequence,
         trail = trail.substring(
             getMatchIndex(matchObj) + getMatchLength(matchObj, 0), trail.length());
         // Force the compiled pattern to reset internal state
-        resetRegExpLastIndex(compiled);
+        compiled.lastIndex = 0;
         // Only one zero length match per character to ensure termination
         if (lastTrail == trail) {
           out[count] = trail.substring(0, 1);
@@ -703,7 +667,7 @@ public final class String implements Comparable<String>, CharSequence,
   }
 
   public boolean startsWith(String prefix, int toffset) {
-    return toffset >= 0 && __substr(this, toffset, prefix.length()).equals(prefix);
+    return toffset >= 0 && asNativeString().substr(toffset, prefix.length()).equals(prefix);
   }
 
   @Override
@@ -712,11 +676,11 @@ public final class String implements Comparable<String>, CharSequence,
   }
 
   public String substring(int beginIndex) {
-    return __substr(this, beginIndex, this.length() - beginIndex);
+    return asNativeString().substr(beginIndex, this.length() - beginIndex);
   }
 
   public String substring(int beginIndex, int endIndex) {
-    return __substr(this, beginIndex, endIndex - beginIndex);
+    return asNativeString().substr(beginIndex, endIndex - beginIndex);
   }
 
   public char[] toCharArray() {
@@ -735,19 +699,8 @@ public final class String implements Comparable<String>, CharSequence,
    * {@code toLowerCase(Locale.getDefault())} instead.
    */
   public String toLowerCase() {
-    return toLowerCase(this);
+    return asNativeString().toLowerCase();
   }
-  
-  private static native String toLowerCase(String s) /*-{
-    return s.toLowerCase();
-  }-*/;
-
-  /**
-   * Transforms the String to lower-case based on the native locale of the browser.
-   */
-  private static native String toLocaleLowerCase(String s) /*-{
-    return s.toLocaleLowerCase();
-  }-*/;
 
   /**
    * If provided {@code locale} is {@link Locale#getDefault()}, uses javascript's
@@ -756,26 +709,19 @@ public final class String implements Comparable<String>, CharSequence,
    * predefined in GWT Locale emulation.
    */
   public String toLowerCase(Locale locale) {
-    return locale == Locale.getDefault() ? toLocaleLowerCase(this) : toLowerCase(this);
+    return locale == Locale.getDefault()
+        ? asNativeString().toLocaleLowerCase() : asNativeString().toLowerCase();
   }
 
   // See the notes in lowerCase pair.
   public String toUpperCase() {
-    return toLocaleUpperCase(this);
+    return asNativeString().toLocaleUpperCase();
   }
   
-  private static native String toUpperCase(String s) /*-{
-    return s.toUpperCase();
-  }-*/;
-
-  // See the notes in lowerCase pair.
-  private static native String toLocaleUpperCase(String s) /*-{
-    return s.toLocaleUpperCase();
-  }-*/;
-
   // See the notes in lowerCase pair.
   public String toUpperCase(Locale locale) {
-    return locale == Locale.getDefault() ? toLocaleUpperCase(this) : toUpperCase(this);
+    return locale == Locale.getDefault()
+        ? asNativeString().toLocaleUpperCase() : asNativeString().toUpperCase();
   }
 
   @Override
@@ -800,58 +746,75 @@ public final class String implements Comparable<String>, CharSequence,
     return start > 0 || end < length ? substring(start, end) : this;
   }
 
+  @JsType(isNative = true, name = "String", namespace = JsPackage.GLOBAL)
+  private static class NativeString {
+    public static native String fromCharCode(char x);
+    public int length;
+    public native char charCodeAt(int index);
+    public native int indexOf(String str);
+    public native int indexOf(String str, int startIndex);
+    public native int lastIndexOf(String str);
+    public native int lastIndexOf(String str, int start);
+    public native String replace(NativeRegExp regex, String replace);
+    public native String substr(int beginIndex, int len);
+    public native String toLocaleLowerCase();
+    public native String toLocaleUpperCase();
+    public native String toLowerCase();
+    public native String toUpperCase();
+  }
+
   // CHECKSTYLE_OFF: Utility Methods for unboxed String.
 
   @JsMethod(name = "$create")
-  static String $createString() {
+  private static String $createString() {
     return "";
   }
 
   @JsMethod(name = "$create__arrayOf_byte")
-  static String $createString(byte[] bytes) {
+  private static String $createString(byte[] bytes) {
     return $createString(bytes, 0, bytes.length);
   }
 
   @JsMethod(name = "$create__arrayOf_byte__int__int")
-  static String $createString(byte[] bytes, int ofs, int len) {
+  private static String $createString(byte[] bytes, int ofs, int len) {
     return $createString(bytes, ofs, len, EmulatedCharset.UTF_8);
   }
 
   @JsMethod(name = "$create__arrayOf_byte__int__int__java_lang_String")
-  static String $createString(byte[] bytes, int ofs, int len, String charsetName)
+  private static String $createString(byte[] bytes, int ofs, int len, String charsetName)
       throws UnsupportedEncodingException {
     return $createString(bytes, ofs, len, String.getCharset(charsetName));
   }
 
   @JsMethod(name = "$create__arrayOf_byte__int__int__java_nio_charset_Charset")
-  static String $createString(byte[] bytes, int ofs, int len, Charset charset) {
+  private static String $createString(byte[] bytes, int ofs, int len, Charset charset) {
     return String.valueOf(((EmulatedCharset) charset).decodeString(bytes, ofs, len));
   }
 
   @JsMethod(name = "$create__arrayOf_byte__java_lang_String")
-  static String $createString(byte[] bytes, String charsetName)
+  private static String $createString(byte[] bytes, String charsetName)
       throws UnsupportedEncodingException {
     return $createString(bytes, 0, bytes.length, charsetName);
   }
 
   @JsMethod(name = "$create__arrayOf_byte__java_nio_charset_Charset")
-  static String $createString(byte[] bytes, Charset charset)
+  private static String $createString(byte[] bytes, Charset charset)
       throws UnsupportedEncodingException {
     return $createString(bytes, 0, bytes.length, charset.name());
   }
 
   @JsMethod(name = "$create__arrayOf_char")
-  static String $createString(char value[]) {
+  private static String $createString(char value[]) {
     return String.valueOf(value);
   }
 
   @JsMethod(name = "$create__arrayOf_char__int__int")
-  static String $createString(char value[], int offset, int count) {
+  private static String $createString(char value[], int offset, int count) {
     return String.valueOf(value, offset, count);
   }
 
   @JsMethod(name = "$create__arrayOf_int__int__int")
-  static String $createString(int[] codePoints, int offset, int count) {
+  private static String $createString(int[] codePoints, int offset, int count) {
     char[] chars = new char[count * 2];
     int charIdx = 0;
     while (count-- > 0) {
@@ -861,22 +824,22 @@ public final class String implements Comparable<String>, CharSequence,
   }
 
   @JsMethod(name = "$create__java_lang_String")
-  static String $createString(String other) {
+  private static String $createString(String other) {
     return other;
   }
 
   @JsMethod(name = "$create__java_lang_StringBuffer")
-  static String $createString(StringBuffer sb) {
+  private static String $createString(StringBuffer sb) {
     return String.valueOf(sb);
   }
 
   @JsMethod(name = "$create__java_lang_StringBuilder")
-  static String $createString(StringBuilder sb) {
+  private static String $createString(StringBuilder sb) {
     return String.valueOf(sb);
   }
 
   @JsMethod
-  static boolean $isInstance(Object instance) {
+  private static boolean $isInstance(Object instance) {
     return "string".equals(JsUtils.typeOf(instance));
   }
   // CHECKSTYLE_ON: end utility methods

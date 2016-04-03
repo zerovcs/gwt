@@ -24,11 +24,10 @@ import com.google.gwt.dev.codeserver.Pages.ErrorPage;
 import com.google.gwt.dev.json.JsonObject;
 
 import org.eclipse.jetty.http.MimeTypes;
-import org.eclipse.jetty.io.Buffer;
-import org.eclipse.jetty.server.AbstractHttpConnection;
+import org.eclipse.jetty.server.HttpConnection;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.servlets.GzipFilter;
@@ -95,7 +94,7 @@ public class WebServer {
   private final SourceHandler sourceHandler;
   private final SymbolMapHandler symbolMapHandler;
   private final JsonExporter jsonExporter;
-  private final OutboxTable outboxes;
+  private final OutboxTable outboxTable;
   private final JobRunner runner;
   private final JobEventTable eventTable;
 
@@ -105,12 +104,12 @@ public class WebServer {
   private Server server;
 
   WebServer(SourceHandler handler, SymbolMapHandler symbolMapHandler, JsonExporter jsonExporter,
-      OutboxTable outboxes, JobRunner runner, JobEventTable eventTable, String bindAddress,
+      OutboxTable outboxTable, JobRunner runner, JobEventTable eventTable, String bindAddress,
       int port) {
     this.sourceHandler = handler;
     this.symbolMapHandler = symbolMapHandler;
     this.jsonExporter = jsonExporter;
-    this.outboxes = outboxes;
+    this.outboxTable = outboxTable;
     this.runner = runner;
     this.eventTable = eventTable;
     this.bindAddress = bindAddress;
@@ -119,13 +118,12 @@ public class WebServer {
 
   void start(final TreeLogger logger) throws UnableToCompleteException {
 
-    SelectChannelConnector connector = new SelectChannelConnector();
+    Server newServer = new Server();
+    ServerConnector connector = new ServerConnector(newServer);
     connector.setHost(bindAddress);
     connector.setPort(port);
     connector.setReuseAddress(false);
     connector.setSoLingerTime(0);
-
-    Server newServer = new Server();
     newServer.addConnector(connector);
 
     ServletContextHandler newHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
@@ -162,7 +160,7 @@ public class WebServer {
    * @param outputModuleName the module name that the GWT compiler used in its output.
    */
   public File getCurrentWarDir(String outputModuleName) {
-    return outboxes.findByOutputModuleName(outputModuleName).getWarDir();
+    return outboxTable.findByOutputModuleName(outputModuleName).getWarDir();
   }
 
   private void handleRequest(String target, HttpServletRequest request,
@@ -213,7 +211,7 @@ public class WebServer {
     // This is a GET because a bookmarklet can call it from a different origin (JSONP).
     if (target.startsWith("/recompile/")) {
       String moduleName = target.substring("/recompile/".length());
-      Outbox box = outboxes.findByOutputModuleName(moduleName);
+      Outbox box = outboxTable.findByOutputModuleName(moduleName);
       if (box == null) {
         return new ErrorPage("No such module: " + moduleName);
       }
@@ -234,7 +232,7 @@ public class WebServer {
     if (target.startsWith("/clean")) {
       JsonObject json = null;
       try {
-        runner.clean(logger);
+        runner.clean(logger, outboxTable);
         json = jsonExporter.exportOk("Cleaned disk caches.");
       } catch (ExecutionException e) {
         json = jsonExporter.exportError(e.getMessage());
@@ -245,7 +243,7 @@ public class WebServer {
     // GET the Js that knows how to request the specific permutation recompile.
     if (target.startsWith("/recompile-requester/")) {
       String moduleName = target.substring("/recompile-requester/".length());
-      Outbox box = outboxes.findByOutputModuleName(moduleName);
+      Outbox box = outboxTable.findByOutputModuleName(moduleName);
       if (box == null) {
         return new ErrorPage("No such module: " + moduleName);
       }
@@ -261,7 +259,7 @@ public class WebServer {
 
     if (target.startsWith("/log/")) {
       String moduleName = target.substring("/log/".length());
-      Outbox box = outboxes.findByOutputModuleName(moduleName);
+      Outbox box = outboxTable.findByOutputModuleName(moduleName);
       if (box == null) {
         return new ErrorPage("No such module: " + moduleName);
       } else if (box.containsStubCompile()) {
@@ -334,7 +332,7 @@ public class WebServer {
 
     int secondSlash = target.indexOf('/', 1);
     String moduleName = target.substring(1, secondSlash);
-    Outbox box = outboxes.findByOutputModuleName(moduleName);
+    Outbox box = outboxTable.findByOutputModuleName(moduleName);
     if (box == null) {
       return new ErrorPage("No such module: " + moduleName);
     }
@@ -393,7 +391,7 @@ public class WebServer {
   }
 
   private Response makeModulePage(String moduleName) {
-    Outbox box = outboxes.findByOutputModuleName(moduleName);
+    Outbox box = outboxTable.findByOutputModuleName(moduleName);
     if (box == null) {
       return new ErrorPage("No such module: " + moduleName);
     }
@@ -421,7 +419,7 @@ public class WebServer {
 
         out.startTag("h1").text("Policy Files").endTag("h1").nl();
 
-        for (Outbox box : outboxes.getOutboxes()) {
+        for (Outbox box : outboxTable.getOutboxes()) {
           List<PolicyFile> policies = box.readRpcPolicyManifest();
           if (!policies.isEmpty()) {
             out.startTag("h2").text(box.getOutputModuleName()).endTag("h2").nl();
@@ -471,7 +469,7 @@ public class WebServer {
       return new ErrorPage("invalid name for policy file: " + rest);
     }
 
-    File fileToSend = outboxes.findPolicyFile(rest);
+    File fileToSend = outboxTable.findPolicyFile(rest);
     if (fileToSend == null) {
       return new ErrorPage("Policy file not found: " + rest);
     }
@@ -546,8 +544,8 @@ public class WebServer {
 
   /* visible for testing */
   static String guessMimeType(String filename) {
-    Buffer mimeType = MIME_TYPES.getMimeByExtension(filename);
-    return mimeType != null ? mimeType.toString() : "";
+    String mimeType = MIME_TYPES.getMimeByExtension(filename);
+    return mimeType != null ? mimeType : "";
   }
 
   /**
@@ -567,7 +565,7 @@ public class WebServer {
 
   private static void setHandled(HttpServletRequest request) {
     Request baseRequest = (request instanceof Request) ? (Request) request :
-        AbstractHttpConnection.getCurrentConnection().getRequest();
+        HttpConnection.getCurrentConnection().getHttpChannel().getRequest();
     baseRequest.setHandled(true);
   }
 }

@@ -17,6 +17,9 @@ package com.google.gwt.dom.client;
 
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.safehtml.shared.SafeUri;
+import com.google.gwt.safehtml.shared.annotations.IsSafeUri;
+import com.google.gwt.safehtml.shared.annotations.IsTrustedResourceUri;
+import com.google.gwt.safehtml.shared.annotations.SuppressIsTrustedResourceUriCastCheck;
 
 /**
  * Create a frame.
@@ -177,7 +180,7 @@ public class FrameElement extends Element {
    *
    * @see <a href="http://www.w3.org/TR/1999/REC-html401-19991224/present/frames.html#adef-longdesc-FRAME">W3C HTML Specification</a>
    */
-  public final native void setLongDesc(String longDesc) /*-{
+  public final native void setLongDesc(@IsSafeUri String longDesc) /*-{
      this.longDesc = longDesc;
    }-*/;
 
@@ -231,7 +234,8 @@ public class FrameElement extends Element {
    *
    * @see <a href="http://www.w3.org/TR/1999/REC-html401-19991224/present/frames.html#adef-src-FRAME">W3C HTML Specification</a>
    */
-  public final void setSrc(SafeUri src) {
+  @SuppressIsTrustedResourceUriCastCheck
+  public final void setSrc(@IsTrustedResourceUri SafeUri src) {
     setSrc(src.asString());
   }
 
@@ -240,7 +244,7 @@ public class FrameElement extends Element {
    *
    * @see <a href="http://www.w3.org/TR/1999/REC-html401-19991224/present/frames.html#adef-src-FRAME">W3C HTML Specification</a>
    */
-  public final native void setSrc(String src) /*-{
+  public final native void setSrc(@IsTrustedResourceUri String src) /*-{
      this.src = src;
    }-*/;
 }

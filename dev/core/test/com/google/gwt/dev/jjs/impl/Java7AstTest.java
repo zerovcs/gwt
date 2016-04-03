@@ -30,7 +30,7 @@ public class Java7AstTest extends JJSTestBase {
   // of nodes.
   @Override
   public void setUp() {
-    sourceLevel = SourceLevel.JAVA7;
+    sourceLevel = SourceLevel.JAVA8;
     addAll(JavaResourceBase.AUTOCLOSEABLE, Java7MockResources.TEST_RESOURCE,
         Java7MockResources.EXCEPTION1, Java7MockResources.EXCEPTION2);
   }
@@ -93,14 +93,8 @@ public class Java7AstTest extends JJSTestBase {
         "Object o = null; char s = (char) o;");
 
     assertEqualBlock(
-        "Object o = null; char s = (char) ((Character) o).charValue();",
-        "Object o = null; char s = (char) o;");
-
-    // This is the expected behaviour, however JDT 3.8.3 emits a compiler error.
-    // TODO(rluble): uncomment when JDT is updated.
-    // assertEqualBlock(
-    //    "Number o = 1; int s = (int) ((Integer) o).intValue();",
-    //    "Number o= 1 ; int s = (int) o;");
+        "Number o = null; int s = (int) ((Integer) o).intValue();",
+        "Number o = null; int s = (int) o;");
   }
 
   private void assertEqualExpression(String type, String expected, String expression)

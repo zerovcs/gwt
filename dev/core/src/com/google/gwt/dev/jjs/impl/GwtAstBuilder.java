@@ -237,9 +237,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import javaemul.internal.annotations.DoNotInline;
-import javaemul.internal.annotations.ForceInline;
-
 /**
  * Constructs a GWT Java AST from a single isolated compilation unit. The AST is
  * not associated with any {@link com.google.gwt.dev.jjs.ast.JProgram} and will
@@ -262,8 +259,6 @@ public class GwtAstBuilder {
   public static final int CLINIT_METHOD_INDEX = 0;
   public static final int INIT_METHOD_INDEX = 1;
   public static final int GET_CLASS_METHOD_INDEX = 2;
-  public static final int VALUE_OF_METHOD_INDEX = 3;
-  public static final int VALUES_METHOD_INDEX = 4;
 
   /**
    * Visit the JDT AST and produce our own AST. By the end of this pass, the
@@ -1730,6 +1725,9 @@ public class GwtAstBuilder {
        * [x] denotes optional, depending on context of whether outer this scope is needed.
        */
 
+      // Resolve the reference expression to make sure the declaring class of the method is resolved
+      // to the right type.
+      x.resolve(blockScope);
       // Calculate what type this reference is going to bind to, and what single abstract method
       TypeBinding binding = x.expectedType();
       MethodBinding samBinding = binding.getSingleAbstractMethod(blockScope, false).original();
@@ -2907,7 +2905,7 @@ public class GwtAstBuilder {
       JMethod method = type.getMethods().get(GET_CLASS_METHOD_INDEX);
       assert (GET_CLASS_METHOD_NAME.equals(method.getName()));
       SourceInfo info = method.getSourceInfo();
-      if (type.isJsoType() || type.isJsNative()) {
+      if (type.isJsoType()) {
         // Native types and JSOs get a synthetic get class that return JavaScriptObject.class.
         //
         // return Cast.getClass(this)
@@ -3055,8 +3053,10 @@ public class GwtAstBuilder {
 
     private void processEnumType(JEnumType type) {
       // $clinit, $init, getClass, valueOf, values
-      JMethod valueOfMethod = type.getMethods().get(VALUE_OF_METHOD_INDEX);
-      JMethod valuesMethod = type.getMethods().get(VALUES_METHOD_INDEX);
+      JMethod valueOfMethod =
+          type.getMethods().get(getEnumMethodsStartIndex(type) + VALUE_OF_METHOD_OFFSET);
+      JMethod valuesMethod =
+      type.getMethods().get(getEnumMethodsStartIndex(type) + VALUES_METHOD_OFFSET);
       {
         assert VALUE_OF_METHOD_NAME.equals(valueOfMethod.getName());
         writeEnumValueOfMethod(type, valueOfMethod, valuesMethod);
@@ -3932,7 +3932,8 @@ public class GwtAstBuilder {
 
       if (type instanceof JEnumType) {
         {
-          assert type.getMethods().size() == VALUE_OF_METHOD_INDEX;
+          assert type.getMethods().size()
+              == getEnumMethodsStartIndex(type) + VALUE_OF_METHOD_OFFSET;
           MethodBinding valueOfBinding =
               binding.getExactMethod(VALUE_OF_,
                   new TypeBinding[]{x.scope.getJavaLangString()}, curCud.scope);
@@ -3940,7 +3941,9 @@ public class GwtAstBuilder {
           createMethodFromBinding(info, valueOfBinding, new String[] {"name"});
         }
         {
-          assert type.getMethods().size() == VALUES_METHOD_INDEX;
+          assert type.getMethods().size()
+              == getEnumMethodsStartIndex(type) + VALUES_METHOD_OFFSET;
+
           MethodBinding valuesBinding = binding.getExactMethod(VALUES_, NO_TYPES, curCud.scope);
           assert valuesBinding != null;
           createMethodFromBinding(info, valuesBinding, null);
@@ -3969,10 +3972,23 @@ public class GwtAstBuilder {
     }
   }
 
-  private boolean isSyntheticGetClassNeeded(TypeDeclaration typeDeclaration, JDeclaredType type) {
+  private static boolean isSyntheticGetClassNeeded(
+      TypeDeclaration typeDeclaration, JDeclaredType type) {
     // TODO(rluble): We should check whether getClass is implemented by type and only
     // instead of blacklisting.
-    return type.getSuperClass() != null && !JdtUtil.isJsoSubclass(typeDeclaration.binding);
+    return type.getSuperClass() != null && !JdtUtil.isJsoSubclass(typeDeclaration.binding)
+        && !type.isJsNative();
+  }
+
+  private static final int VALUE_OF_METHOD_OFFSET = 0;
+  private static final int VALUES_METHOD_OFFSET = 1;
+
+  private static int getEnumMethodsStartIndex(JType type) {
+    assert type instanceof JEnumType;
+    if (type.isJsNative()) {
+      return GET_CLASS_METHOD_INDEX;
+    }
+    return GET_CLASS_METHOD_INDEX + 1;
   }
 
   private void createMethod(AbstractMethodDeclaration x) {
@@ -4065,15 +4081,20 @@ public class GwtAstBuilder {
     processSuppressedWarnings(method, x.annotations);
   }
 
+  private void processAnnotations(JParameter parameter, Annotation... annotations) {
+    JsInteropUtil.maybeSetJsInteropProperties(parameter, annotations);
+    processSuppressedWarnings(parameter, annotations);
+  }
+
   private void processSuppressedWarnings(CanHaveSuppressedWarnings x, Annotation... annotations) {
     x.setSuppressedWarnings(JdtUtil.getSuppressedWarnings(annotations));
   }
 
-  private void maybeSetInliningMode(AbstractMethodDeclaration x,
-      JMethod method) {
-    if (JdtUtil.getAnnotation(x.binding, DoNotInline.class.getCanonicalName()) != null) {
+  private void maybeSetInliningMode(AbstractMethodDeclaration x, JMethod method) {
+    MethodBinding bind = x.binding;
+    if (JdtUtil.getAnnotation(bind, "javaemul.internal.annotations.DoNotInline") != null) {
       method.setInliningMode(InliningMode.DO_NOT_INLINE);
-    } else if (JdtUtil.getAnnotation(x.binding, ForceInline.class.getCanonicalName()) != null) {
+    } else if (JdtUtil.getAnnotation(bind, "javaemul.internal.annotations.ForceInline") != null) {
       method.setInliningMode(InliningMode.FORCE_INLINE);
     }
   }
@@ -4121,9 +4142,9 @@ public class GwtAstBuilder {
 
   private void createParameter(SourceInfo info, LocalVariableBinding binding, String name,
       JMethod method, boolean isVarargs, Annotation... annotations) {
-    JParameter param =
+    JParameter parameter =
         method.createParameter(info, name, typeMap.get(binding.type), binding.isFinal(), isVarargs);
-    processSuppressedWarnings(param, annotations);
+    processAnnotations(parameter, annotations);
   }
 
   private void createParameters(JMethod method, AbstractMethodDeclaration x) {

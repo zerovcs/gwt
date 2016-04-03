@@ -101,10 +101,18 @@ final class Cast {
   }
 
   /**
+   * Allow a cast to an array of Jsos, accepting also untyped arrays.
+   */
+  static Object castToJsoArray(Object src, JavaScriptObject dstId) {
+    checkType(src == null || instanceOfJsoArray(src, dstId));
+    return src;
+  }
+
+  /**
    * Allow a cast to (untyped) array. This case covers single and multidimensional JsType arrays.
    */
-  static Object castToNativeArray(Object src) {
-    checkType(src == null || instanceOfNativeArray(src));
+  static Object castToJsArray(Object src) {
+    checkType(src == null || instanceOfJsArray(src));
     return src;
   }
 
@@ -129,6 +137,14 @@ final class Cast {
    */
   static Object castToFunction(Object src) {
     checkType(src == null || isFunction(src));
+    return src;
+  }
+
+  /**
+   * Allow a dynamic cast to a native GLOBAL.Object if it is JavaScript object.
+   */
+  static Object castToJsObject(Object src) {
+    checkType(src == null || isJsObject(src));
     return src;
   }
 
@@ -171,9 +187,16 @@ final class Cast {
   }
 
   /**
+   * Returns true if {@code src} is Java object array or an untyped array.
+   */
+  static boolean instanceOfJsoArray(Object src, JavaScriptObject dstId) {
+    return canCast(src, dstId) || !Util.hasTypeMarker(src) && isArray(src);
+  }
+
+  /**
    * Returns true if {@code src} is an array (native or not).
    */
-  static boolean instanceOfNativeArray(Object src) {
+  static boolean instanceOfJsArray(Object src) {
     return isArray(src);
   }
 
@@ -205,6 +228,13 @@ final class Cast {
   }
 
   /**
+   * Returns true if the object is a JS object.
+   */
+  static boolean instanceOfJsObject(Object src) {
+    return (src != null) && isJsObject(src);
+  }
+
+  /**
    * Returns whether the Object is a function.
    */
   @HasNoSideEffects
@@ -213,7 +243,13 @@ final class Cast {
   }-*/;
 
   @HasNoSideEffects
+  private static native boolean isJsObject(Object src)/*-{
+    return typeof(src) === "object";
+  }-*/;
+
+  @HasNoSideEffects
   static boolean isJavaScriptObject(Object src) {
+    // TODO(rluble): should return false to for plain arrays.
     return isJsObjectOrFunction(src) && !Util.hasTypeMarker(src);
   }
 
@@ -353,6 +389,7 @@ final class Cast {
   @HasNoSideEffects
   static native Class<?> getClass(Object array) /*-{
     return array.@java.lang.Object::___clazz
+        || Array.isArray(array) && @JavaScriptObject[]::class
         || @JavaScriptObject::class;
   }-*/;
 }

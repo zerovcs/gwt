@@ -23,13 +23,13 @@ import java.util.NoSuchElementException;
 // Some parts adapted from Guava
 public final class InternalPreconditions {
   private static final boolean CHECKED_MODE =
-      System.getProperty("checkedMode", "ENABLED").equals("ENABLED");
+      System.getProperty("jre.checkedMode", "ENABLED").equals("ENABLED");
   private static final boolean TYPE_CHECK =
-      System.getProperty("checks.type", "ENABLED").equals("ENABLED");
+      System.getProperty("jre.checks.type", "ENABLED").equals("ENABLED");
   private static final boolean API_CHECK =
-      System.getProperty("checks.api", "ENABLED").equals("ENABLED");
+      System.getProperty("jre.checks.api", "ENABLED").equals("ENABLED");
   private static final boolean BOUND_CHECK =
-      System.getProperty("checks.bounds", "ENABLED").equals("ENABLED");
+      System.getProperty("jre.checks.bounds", "ENABLED").equals("ENABLED");
 
   public static void checkType(boolean expression) {
     if (TYPE_CHECK) {
@@ -237,10 +237,10 @@ public final class InternalPreconditions {
    */
   public static void checkState(boolean expression) {
     if (API_CHECK) {
-      checkCritcalState(expression);
+      checkCriticalState(expression);
     } else if (CHECKED_MODE) {
       try {
-        checkCritcalState(expression);
+        checkCriticalState(expression);
       } catch (Exception e) {
         throw new AssertionError(e);
       }
@@ -254,7 +254,7 @@ public final class InternalPreconditions {
    * For cases where failing fast is pretty important and not failing early could cause bugs that
    * are much harder to debug.
    */
-  public static void checkCritcalState(boolean expression) {
+  public static void checkCriticalState(boolean expression) {
     if (!expression) {
       throw new IllegalStateException();
     }
@@ -433,7 +433,7 @@ public final class InternalPreconditions {
   /**
    * Checks that bounds are correct.
    *
-   * @throw StringIndexOutOfBoundsException if the range is not legal
+   * @throws StringIndexOutOfBoundsException if the range is not legal
    */
   public static void checkStringBounds(int start, int end, int size) {
     if (start < 0) {

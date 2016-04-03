@@ -18,6 +18,8 @@ package com.google.gwt.dom.builder.client;
 import com.google.gwt.dom.builder.shared.FrameBuilder;
 import com.google.gwt.dom.client.FrameElement;
 import com.google.gwt.safehtml.shared.SafeUri;
+import com.google.gwt.safehtml.shared.annotations.IsSafeUri;
+import com.google.gwt.safehtml.shared.annotations.IsTrustedResourceUri;
 
 /**
  * DOM-based implementation of {@link FrameBuilder}.
@@ -42,7 +44,7 @@ public class DomFrameBuilder extends DomElementBuilderBase<FrameBuilder, FrameEl
   }
 
   @Override
-  public FrameBuilder longDesc(String longDesc) {
+  public FrameBuilder longDesc(@IsSafeUri String longDesc) {
     assertCanAddAttribute().setLongDesc(longDesc);
     return this;
   }
@@ -78,13 +80,13 @@ public class DomFrameBuilder extends DomElementBuilderBase<FrameBuilder, FrameEl
   }
 
   @Override
-  public FrameBuilder src(SafeUri src) {
+  public FrameBuilder src(@IsTrustedResourceUri SafeUri src) {
     assertCanAddAttribute().setSrc(src);
     return this;
   }
 
   @Override
-  public FrameBuilder src(String src) {
+  public FrameBuilder src(@IsTrustedResourceUri String src) {
     assertCanAddAttribute().setSrc(src);
     return this;
   }
