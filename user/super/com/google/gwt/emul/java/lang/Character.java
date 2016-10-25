@@ -128,6 +128,7 @@ public final class Character implements Comparable<Character>, Serializable {
   public static final int MAX_CODE_POINT = 0x10FFFF;
 
   public static final int SIZE = 16;
+  public static final int BYTES = SIZE / Byte.SIZE;
 
   public static int charCount(int codePoint) {
     return codePoint >= MIN_SUPPLEMENTARY_CODE_POINT ? 2 : 1;
@@ -217,20 +218,19 @@ public final class Character implements Comparable<Character>, Serializable {
     return forDigit(digit);
   }
 
-  /**
-   * @skip
-   *
-   * public for shared implementation with Arrays.hashCode
-   */
   public static int hashCode(char c) {
     return c;
+  }
+
+  public static boolean isBmpCodePoint(int codePoint) {
+    return codePoint >= MIN_VALUE && codePoint <= MAX_VALUE;
   }
 
   /*
    * TODO: correct Unicode handling.
    */
   public static boolean isDigit(char c) {
-    return String.valueOf(c).nativeMatches(digitRegex());
+    return digitRegex().test(String.valueOf(c));
   }
 
   private static native NativeRegExp digitRegex() /*-{
@@ -245,7 +245,7 @@ public final class Character implements Comparable<Character>, Serializable {
    * TODO: correct Unicode handling.
    */
   public static boolean isLetter(char c) {
-    return String.valueOf(c).nativeMatches(leterRegex());
+    return leterRegex().test(String.valueOf(c));
   }
 
   private static native NativeRegExp leterRegex() /*-{
@@ -256,7 +256,7 @@ public final class Character implements Comparable<Character>, Serializable {
    * TODO: correct Unicode handling.
    */
   public static boolean isLetterOrDigit(char c) {
-    return String.valueOf(c).nativeMatches(leterOrDigitRegex());
+    return leterOrDigitRegex().test(String.valueOf(c));
   }
 
   private static native NativeRegExp leterOrDigitRegex() /*-{
@@ -296,11 +296,11 @@ public final class Character implements Comparable<Character>, Serializable {
   }
 
   public static boolean isWhitespace(char ch) {
-    return String.valueOf(ch).nativeMatches(whitespaceRegex());
+    return whitespaceRegex().test(String.valueOf(ch));
   }
 
   public static boolean isWhitespace(int codePoint) {
-    return String.fromCodePoint(codePoint).nativeMatches(whitespaceRegex());
+    return whitespaceRegex().test(String.fromCodePoint(codePoint));
   }
 
   // The regex would just be /\s/, but browsers handle non-breaking spaces inconsistently. Also,

@@ -114,10 +114,6 @@ public class JsTypeVarargsTest extends GWTTestCase {
   }
 
   static class SubclassNativeWithVarargsConstructor extends NativeJsTypeWithVarargsConstructor {
-    SubclassNativeWithVarargsConstructor(String s, Object... args) {
-      super(1, args[0], args[1], null);
-    }
-
     SubclassNativeWithVarargsConstructor(int i, Object... args) {
       super(i, args);
     }
@@ -214,11 +210,6 @@ public class JsTypeVarargsTest extends GWTTestCase {
     assertSame(someNativeObject, object.a);
     assertEquals(3, object.b);
 
-    object = new SubclassNativeWithVarargsConstructor("", someNativeObject, null);
-
-    assertSame(someNativeObject, object.a);
-    assertEquals(4, object.b);
-
     object = new SubclassNativeWithVarargsConstructor(1, someNativeObject, null);
 
     assertSame(someNativeObject, object.a);
@@ -250,7 +241,7 @@ public class JsTypeVarargsTest extends GWTTestCase {
     Object f(int i, Object... args);
   }
 
-  static class AFunction implements Function {
+  static final class AFunction implements Function {
 
     @Override
     public Object f(int i, Object... args) {
@@ -301,11 +292,12 @@ public class JsTypeVarargsTest extends GWTTestCase {
   }
 
   @JsMethod(namespace = JsPackage.GLOBAL)
-  public static UninstantiatedClass[] varargJsMethodUninstantiatedVararg(UninstantiatedClass... varargs) {
-    return varargs;
+  public static int varargJsMethodUninstantiatedVararg(
+      UninstantiatedClass... varargs) {
+    return varargs.length;
   }
 
   public native void testVarargsCall_uninstantiatedVararg() /*-{
-    @GWTTestCase::assertEquals(II)(0, $global.varargJsMethodUninstantiatedVararg().length);
+    @GWTTestCase::assertEquals(II)(0, $global.varargJsMethodUninstantiatedVararg());
   }-*/;
 }

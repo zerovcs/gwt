@@ -81,6 +81,11 @@ public abstract class JReferenceType extends JType implements CanBeAbstract {
         }
 
         @Override
+        public boolean isJsFunctionImplementation() {
+          return false;
+        }
+
+        @Override
         public boolean isJsNative() {
           return false;
         }
@@ -212,6 +217,11 @@ public abstract class JReferenceType extends JType implements CanBeAbstract {
     }
 
     @Override
+    public boolean isJsFunctionImplementation() {
+      return ref.isJsFunctionImplementation();
+    }
+
+    @Override
     public boolean isJsoType() {
       return ref.isJsoType();
     }
@@ -318,6 +328,11 @@ public abstract class JReferenceType extends JType implements CanBeAbstract {
   @Override
   public String getJsniSignatureName() {
     return "L" + name.replace('.', '/') + ';';
+  }
+
+  @Override
+  public boolean isPrimitiveType() {
+    return false;
   }
 
   public JReferenceType weakenToNullable() {

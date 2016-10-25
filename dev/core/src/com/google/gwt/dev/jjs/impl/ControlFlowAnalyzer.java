@@ -30,7 +30,6 @@ import com.google.gwt.dev.jjs.ast.JDeclaredType;
 import com.google.gwt.dev.jjs.ast.JExpression;
 import com.google.gwt.dev.jjs.ast.JField;
 import com.google.gwt.dev.jjs.ast.JFieldRef;
-import com.google.gwt.dev.jjs.ast.JInstanceOf;
 import com.google.gwt.dev.jjs.ast.JInterfaceType;
 import com.google.gwt.dev.jjs.ast.JLocal;
 import com.google.gwt.dev.jjs.ast.JLocalRef;
@@ -47,6 +46,7 @@ import com.google.gwt.dev.jjs.ast.JReferenceType;
 import com.google.gwt.dev.jjs.ast.JRunAsync;
 import com.google.gwt.dev.jjs.ast.JStringLiteral;
 import com.google.gwt.dev.jjs.ast.JType;
+import com.google.gwt.dev.jjs.ast.JUnsafeTypeCoercion;
 import com.google.gwt.dev.jjs.ast.JVariable;
 import com.google.gwt.dev.jjs.ast.JVariableRef;
 import com.google.gwt.dev.jjs.ast.JVisitor;
@@ -199,33 +199,7 @@ public class ControlFlowAnalyzer {
 
     @Override
     public boolean visit(JCastOperation x, Context ctx) {
-      // Rescue any JavaScriptObject type that is the target of a cast.
-      JType targetType = x.getCastType();
-
-      // Casts to native classes use the native constructor qualified name.
-      maybeRescueNativeConstructor(targetType);
-
-      if (!canBeInstantiatedInJavaScript(targetType)) {
-        return true;
-      }
-      rescue((JReferenceType) targetType, true);
-      JType exprType = x.getExpr().getType();
-      if (program.typeOracle.isSingleJsoImpl(targetType)) {
-        /*
-         * It's a JSO interface, check if the source expr can be a live JSO:
-         * 1) source is java.lang.Object (JSO could have been assigned to it)
-         * 2) source is JSO
-         * 3) source is SingleJSO interface whose implementor is live
-         */
-        if (program.getTypeJavaLangObject() == exprType
-            || program.typeOracle.canBeJavaScriptObject(exprType)) {
-          // source is JSO or SingleJso interface whose implementor is live
-          JClassType jsoImplementor =
-              program.typeOracle.getSingleJsoImpl((JReferenceType) targetType);
-          rescue(jsoImplementor, true);
-        }
-      }
-
+      rescueByTypeCoercion(x.getCastType(), x.getExpr().getType());
       return true;
     }
 
@@ -310,13 +284,6 @@ public class ControlFlowAnalyzer {
           membersToRescueIfTypeIsInstantiated.add(target);
         }
       }
-      return true;
-    }
-
-    @Override
-    public boolean visit(JInstanceOf expression, Context ctx) {
-      // Instanceof checks for native classes use the native constructor qualified name.
-      maybeRescueNativeConstructor(expression.getTestType());
       return true;
     }
 
@@ -520,6 +487,35 @@ public class ControlFlowAnalyzer {
       return true;
     }
 
+    @Override
+    public boolean visit(JUnsafeTypeCoercion x, Context ctx) {
+      rescueByTypeCoercion(x.getCoercionType(), x.getExpression().getType());
+      return true;
+    }
+
+    private void rescueByTypeCoercion(JType targetType, JType expressionType) {
+      // Rescue any JavaScriptObject type that is the target of a cast.
+      if (!canBeInstantiatedInJavaScript(targetType)) {
+        return;
+      }
+      rescue((JReferenceType) targetType, true);
+      if (program.typeOracle.isSingleJsoImpl(targetType)) {
+        /*
+         * It's a JSO interface, check if the source expr can be a live JSO:
+         * 1) source is java.lang.Object (JSO could have been assigned to it)
+         * 2) source is JSO
+         * 3) source is SingleJSO interface whose implementor is live
+         */
+        if (program.getTypeJavaLangObject() == expressionType
+            || program.typeOracle.canBeJavaScriptObject(expressionType)) {
+          // source is JSO or SingleJso interface whose implementor is live
+          JClassType jsoImplementor =
+              program.typeOracle.getSingleJsoImpl((JReferenceType) targetType);
+          rescue(jsoImplementor, true);
+        }
+      }
+    }
+
     private boolean canBeInstantiatedInJavaScript(JType type) {
       // Technically, JsType/JsFunction are also instantiatable in JavaScript but we don't track
       // them using similar to JSO as if we do that then after cast normalization, they got pruned.
@@ -588,11 +584,10 @@ public class ControlFlowAnalyzer {
     }
 
     /**
-     * Subclasses of JavaScriptObject are never instantiated directly. They are
-     * implicitly created when a JSNI method passes a reference to an existing
-     * JS object into Java code. If any point in the program can pass a value
-     * from JS into Java which could potentially be cast to JavaScriptObject, we
-     * must rescue JavaScriptObject.
+     * Subclasses of JavaScriptObject are never instantiated directly. They are implicitly created
+     * when a JSNI method passes a reference to an existing JS object into Java code. If any point
+     * in the program can pass a value from JS into Java which could potentially be cast to
+     * JavaScriptObject, we must rescue JavaScriptObject.
      *
      * @param type The type of the value passing from Java to JavaScript.
      * @see com.google.gwt.core.client.JavaScriptObject
@@ -705,7 +700,8 @@ public class ControlFlowAnalyzer {
       JDeclaredType declaredType = (JDeclaredType) type;
 
       for (JMethod method : declaredType.getMethods()) {
-        if (method.canBeReferencedExternally()) {
+        if (method.canBeReferencedExternally()
+            || declaredType.isJsNative() && method.isJsConstructor()) {
           rescue(method);
         }
       }
@@ -769,20 +765,12 @@ public class ControlFlowAnalyzer {
       }
     }
 
-    private void maybeRescueNativeConstructor(JType type) {
-      JConstructor jsConstructor = JjsUtils.getJsNativeConstructorOrNull(type);
-      if (jsConstructor != null) {
-        rescue(jsConstructor);
-      }
-    }
-
     /**
-     * The code is very tightly tied to the behavior of
-     * Pruner.CleanupRefsVisitor. CleanUpRefsVisitor will prune unread
-     * parameters, and also prune any matching arguments that don't have side
-     * effects. We want to make control flow congruent to pruning, to avoid the
-     * need to iterate over Pruner until reaching a stable point, so we avoid
-     * actually rescuing such arguments until/unless the parameter is read.
+     * The code is very tightly tied to the behavior of Pruner.CleanupRefsVisitor.
+     * CleanUpRefsVisitor will prune unread parameters, and also prune any matching arguments that
+     * don't have side effects. We want to make control flow congruent to pruning, to avoid the need
+     * to iterate over Pruner until reaching a stable point, so we avoid actually rescuing such
+     * arguments until/unless the parameter is read.
      */
     private void rescueArgumentsIfParametersCanBeRead(JMethodCall call) {
       JMethod method = call.getTarget();
@@ -864,15 +852,14 @@ public class ControlFlowAnalyzer {
       }
       for (JField field : type.getFields()) {
         if (!field.isStatic() && membersToRescueIfTypeIsInstantiated.contains(field)) {
-            rescue(field);
+          rescue(field);
         }
       }
     }
 
     /**
-     * Assume that <code>method</code> is live. Rescue any overriding methods
-     * that might be called if <code>method</code> is called through virtual
-     * dispatch.
+     * Assume that <code>method</code> is live. Rescue any overriding methods that might be called
+     * if <code>method</code> is called through virtual dispatch.
      */
     private void rescueOverridingMethods(JMethod method) {
       if (method.isStatic()) {
@@ -1045,17 +1032,23 @@ public class ControlFlowAnalyzer {
 
       // first time through, record all exported methods
       for (JMethod method : type.getMethods()) {
-        if (method.isJsInteropEntryPoint()) {
+        if (method.isJsInteropEntryPoint() || method.canBeImplementedExternally()) {
           // treat class as instantiated, since a ctor may be called from JS export
           rescuer.rescue(method.getEnclosingType(), true);
           traverseFrom(method);
         }
       }
       for (JField field : type.getFields()) {
-        if (field.isJsInteropEntryPoint()) {
+        if (field.isJsInteropEntryPoint() || field.canBeImplementedExternally()) {
           rescuer.rescue(field.getEnclosingType(), true);
           rescuer.rescue(field);
         }
+      }
+    }
+
+    for (JArrayType arrayType : program.getAllArrayTypes()) {
+      if (arrayType.canBeImplementedExternally()) {
+        rescuer.rescue(arrayType, true);
       }
     }
 

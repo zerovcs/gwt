@@ -27,15 +27,9 @@ import jsinterop.annotations.JsMethod;
  * Wraps native <code>boolean</code> as an object.
  */
 public final class Boolean implements Comparable<Boolean>, Serializable {
-  /*
-   * TODO: figure out how to not clinit this class on direct field access.
-   */
 
-  // CHECKSTYLE_OFF: These have to be created somewhere.
-  public static final Boolean FALSE = new Boolean(false);
-  public static final Boolean TRUE = new Boolean(true);
-
-  // CHECKSTYLE_ON
+  public static final Boolean FALSE = false;
+  public static final Boolean TRUE = true;
 
   public static final Class<Boolean> TYPE = boolean.class;
 
@@ -69,7 +63,7 @@ public final class Boolean implements Comparable<Boolean>, Serializable {
   }
 
   public static Boolean valueOf(boolean b) {
-    return b ? TRUE : FALSE;
+    return b ? $create(true) : $create(false);
   }
 
   public static Boolean valueOf(String s) {
@@ -78,29 +72,25 @@ public final class Boolean implements Comparable<Boolean>, Serializable {
 
   public Boolean(boolean value) {
     /*
-     * Call to $createBoolean(value) must be here so that the method is referenced and not pruned
-     * before new Boolean(value) is replaced by $createBoolean(value) by
+     * Call to $create(value) must be here so that the method is referenced and not pruned
+     * before new Boolean(value) is replaced by $create(value) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createBoolean(value);
+    $create(value);
   }
 
   public Boolean(String s) {
      /*
-     * Call to $createBoolean(value) must be here so that the method is referenced and not pruned
-     * before new Boolean(value) is replaced by $createBoolean(value) by
+     * Call to $create(value) must be here so that the method is referenced and not pruned
+     * before new Boolean(value) is replaced by $create(value) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createBoolean(s);
+    $create(s);
   }
 
   public boolean booleanValue() {
-    return unsafeCast(checkNotNull(this));
+    return JsUtils.unsafeCastToBoolean(checkNotNull(this));
   }
-
-  private static native boolean unsafeCast(Object value) /*-{
-    return value;
-  }-*/;
 
   @Override
   public int compareTo(Boolean b) {
@@ -123,13 +113,11 @@ public final class Boolean implements Comparable<Boolean>, Serializable {
   }
 
   // CHECKSTYLE_OFF: Utility Methods for unboxed Boolean.
-  @JsMethod(name = "$create__boolean")
-  private static Boolean $createBoolean(boolean x) {
+  protected static Boolean $create(boolean x) {
     return createNative(x);
   }
 
-  @JsMethod(name = "$create__java_lang_String")
-  private static Boolean $createBoolean(String x) {
+  protected static Boolean $create(String x) {
     return createNative(Boolean.parseBoolean(x));
   }
 
@@ -138,7 +126,7 @@ public final class Boolean implements Comparable<Boolean>, Serializable {
   }-*/;
 
   @JsMethod
-  private static boolean $isInstance(Object instance) {
+  protected static boolean $isInstance(Object instance) {
     return "boolean".equals(JsUtils.typeOf(instance));
   }
   //CHECKSTYLE_ON: End utility methods

@@ -130,6 +130,7 @@ public class DoubleTest extends GWTTestCase {
     assertTrue(b != s);
   }
 
+  @SuppressWarnings("SelfComparison")
   public void testCompareTo() {
     Double zero = new Double(0.0);
     Double three = new Double(3.0);
@@ -162,6 +163,21 @@ public class DoubleTest extends GWTTestCase {
     // Double.MIN_EXPONENT);
     // issue 8073 - used to fail in prod mode
     assertFalse(Double.isInfinite(Double.NaN));
+  }
+
+  public void testIsInfinite() {
+    assertTrue(Double.isInfinite(Double.NEGATIVE_INFINITY));
+    assertTrue(Double.isInfinite(Double.POSITIVE_INFINITY));
+
+    assertFalse(Double.isInfinite(Double.NaN));
+
+    final double[] finiteNumbers = {
+        -Double.MAX_VALUE, Double.MAX_VALUE, Double.MIN_VALUE,
+        -1.0, -0.5, -0.1, -0.0, 0.0, 0.1, 0.5, 1.0,
+    };
+    for (double value : finiteNumbers) {
+      assertFalse(Double.isInfinite(value));
+    }
   }
 
   public void testParse() {

@@ -24,7 +24,10 @@ import java.io.Serializable;
 
 import javaemul.internal.JsUtils;
 import javaemul.internal.annotations.DoNotInline;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 /**
  * See <a
@@ -33,7 +36,7 @@ import jsinterop.annotations.JsProperty;
  */
 public class Throwable implements Serializable {
 
-  private static final Object UNITIALIZED = new Object();
+  private static final Object UNINITIALIZED = "__noinit__";
 
   /*
    * NOTE: We cannot use custom field serializers because we need the client and
@@ -41,11 +44,7 @@ public class Throwable implements Serializable {
    * The client uses the generated field serializers which can use JSNI. That
    * leaves the server free to special case Throwable so that only the
    * detailMessage field is serialized.
-   *
-   * Throwable is given special treatment by server's SerializabilityUtil class
-   * to ensure that only the detailMessage field is serialized. Changing the
-   * field modifiers below may necessitate a change to the server's
-   * SerializabilityUtil.fieldQualifiesForSerialization(Field) method.
+   * See SerializabilityUtil.
    */
   private String detailMessage;
   private transient Throwable cause;
@@ -55,7 +54,7 @@ public class Throwable implements Serializable {
   private transient boolean writetableStackTrace = true;
 
   @JsProperty
-  private transient Object backingJsObject = UNITIALIZED;
+  private transient Object backingJsObject = UNINITIALIZED;
 
   public Throwable() {
     fillInStackTrace();
@@ -118,9 +117,9 @@ public class Throwable implements Serializable {
 
   // TODO(goktug): set 'name' property to class name and 'message' to detailMessage instead when
   // they are respected by dev tools logging.
-  native Object createError(String msg) /*-{
-    return new Error(msg);
-  }-*/;
+  Object createError(String msg) {
+    return new NativeError(msg);
+  }
 
   private static native Object fixIE(Object e) /*-{
     // In IE -unlike every other browser-, the stack property is not defined until you throw it.
@@ -133,6 +132,10 @@ public class Throwable implements Serializable {
   private native void captureStackTrace() /*-{
     @com.google.gwt.core.client.impl.StackTraceCreator::captureStackTrace(*)(this);
   }-*/;
+
+  public Object getBackingJsObject() {
+    return backingJsObject;
+  }
 
   private void setBackingJsObject(Object backingJsObject) {
     this.backingJsObject = backingJsObject;
@@ -176,7 +179,7 @@ public class Throwable implements Serializable {
       // If this is the first run, let constructor initialize it.
       // (We need to initialize the backingJsObject from constructor as our own implementation of
       // fillInStackTrace is not guaranteed to be executed.)
-      if (backingJsObject != UNITIALIZED) {
+      if (backingJsObject != UNINITIALIZED) {
         initializeBackingError();
       }
 
@@ -279,4 +282,26 @@ public class Throwable implements Serializable {
     String className = getClass().getName();
     return message == null ? className : className + ": " + message;
   }
+
+  @JsMethod
+  public static Throwable of(Object e) {
+    // If the JS error is already mapped to a Java Exception, use it.
+    if (e != null) {
+      Throwable throwable = JsUtils.getProperty(e, "__java$exception");
+      if (throwable != null) {
+        return throwable;
+      }
+    }
+
+    // If the JS error is being seen for the first time, map it best corresponding Java exception.
+    return e instanceof NativeTypeError ? new NullPointerException(e) : new JsException(e);
+  }
+
+  @JsType(isNative = true, name = "Error", namespace = JsPackage.GLOBAL)
+  private static class NativeError {
+    NativeError(String msg) { }
+  }
+
+  @JsType(isNative = true, name = "TypeError", namespace = JsPackage.GLOBAL)
+  private static class NativeTypeError { }
 }

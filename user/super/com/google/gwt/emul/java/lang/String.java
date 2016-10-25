@@ -16,7 +16,8 @@
 
 package java.lang;
 
-import static javaemul.internal.InternalPreconditions.checkStringBounds;
+import static javaemul.internal.InternalPreconditions.checkCriticalStringBounds;
+import static javaemul.internal.InternalPreconditions.checkNotNull;
 
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
@@ -24,6 +25,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.StringJoiner;
 
 import javaemul.internal.ArrayHelper;
 import javaemul.internal.EmulatedCharset;
@@ -110,6 +112,22 @@ public final class String implements Comparable<String>, CharSequence,
     return valueOf(v, offset, count);
   }
 
+  public static String join(CharSequence delimiter, CharSequence... elements) {
+    StringJoiner joiner = new StringJoiner(delimiter);
+    for (CharSequence e : elements) {
+      joiner.add(e);
+    }
+    return joiner.toString();
+  }
+
+  public static String join(CharSequence delimiter, Iterable<? extends CharSequence> elements) {
+    StringJoiner joiner = new StringJoiner(delimiter);
+    for (CharSequence e : elements) {
+      joiner.add(e);
+    }
+    return joiner.toString();
+  }
+
   public static String valueOf(boolean x) {
     return "" + x;
   }
@@ -120,7 +138,7 @@ public final class String implements Comparable<String>, CharSequence,
 
   public static String valueOf(char x[], int offset, int count) {
     int end = offset + count;
-    checkStringBounds(offset, end, x.length);
+    checkCriticalStringBounds(offset, end, x.length);
     // Work around function.prototype.apply call stack size limits:
     // https://code.google.com/p/v8/issues/detail?id=2896
     // Performance: http://jsperf.com/string-fromcharcode-test/13
@@ -139,12 +157,12 @@ public final class String implements Comparable<String>, CharSequence,
   }
 
   @JsType(isNative = true, name = "Function", namespace = JsPackage.GLOBAL)
-  private static class NativeFunction<T> {
-    public native T apply(Object thisContext, Object[] argsArray);
+  private static class NativeFunction {
+    public native String apply(String thisContext, Object[] argsArray);
   }
 
-  @JsProperty(name = "fromCharCode", namespace = "String")
-  private static native NativeFunction<String> getFromCharCodeFunction();
+  @JsProperty(name = "String.fromCharCode", namespace = "<window>")
+  private static native NativeFunction getFromCharCodeFunction();
 
   public static String valueOf(char[] x) {
     return valueOf(x, 0, x.length);
@@ -192,13 +210,6 @@ public final class String implements Comparable<String>, CharSequence,
     return replaceStr;
   }
 
-  private static native int compareTo(String thisStr, String otherStr) /*-{
-    if (thisStr == otherStr) {
-      return 0;
-    }
-    return thisStr < otherStr ? -1 : 1;
-  }-*/;
-
   private static Charset getCharset(String charsetName) throws UnsupportedEncodingException {
     try {
       return Charset.forName(charsetName);
@@ -220,122 +231,121 @@ public final class String implements Comparable<String>, CharSequence,
 
   public String() {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString();
+    $create();
   }
 
   public String(byte[] bytes) {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(bytes);
+    $create(bytes);
   }
 
   public String(byte[] bytes, int ofs, int len) {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(bytes, ofs, len);
+    $create(bytes, ofs, len);
   }
 
   public String(byte[] bytes, int ofs, int len, String charsetName)
       throws UnsupportedEncodingException {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(bytes, ofs, len, charsetName);
+    $create(bytes, ofs, len, charsetName);
   }
 
   public String(byte[] bytes, int ofs, int len, Charset charset) {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(bytes, ofs, len, charset);
+    $create(bytes, ofs, len, charset);
   }
 
   public String(byte[] bytes, String charsetName)
       throws UnsupportedEncodingException {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(bytes, charsetName);
+    $create(bytes, charsetName);
   }
 
-  public String(byte[] bytes, Charset charset)
-      throws UnsupportedEncodingException {
+  public String(byte[] bytes, Charset charset) {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(bytes, charset);
+    $create(bytes, charset);
   }
 
   public String(char value[]) {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(value);
+    $create(value);
   }
 
   public String(char value[], int offset, int count) {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(value, offset, count);
+    $create(value, offset, count);
   }
 
   public String(int codePoints[], int offset, int count) {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(codePoints, offset, count);
+    $create(codePoints, offset, count);
   }
 
   public String(String other) {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(other);
+    $create(other);
   }
 
   public String(StringBuffer sb) {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(sb);
+    $create(sb);
   }
 
   public String(StringBuilder sb) {
     /*
-     * Call to $createString(args) must be here so that the method is referenced and not
-     * pruned before new String(args) is replaced by $createString(args) by
+     * Call to $create(args) must be here so that the method is referenced and not
+     * pruned before new String(args) is replaced by $create(args) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createString(sb);
+    $create(sb);
   }
 
   private NativeString asNativeString() {
@@ -365,15 +375,15 @@ public final class String implements Comparable<String>, CharSequence,
 
   @Override
   public int compareTo(String other) {
-    return compareTo(this, other);
+    return JsUtils.compare(checkNotNull(this), checkNotNull(other));
   }
 
   public int compareToIgnoreCase(String other) {
-    return compareTo(toLowerCase(), other.toLowerCase());
+    return toLowerCase().compareTo(other.toLowerCase());
   }
 
   public String concat(String str) {
-    return this + str;
+    return checkNotNull(this) + checkNotNull(str);
   }
 
   public boolean contains(CharSequence s) {
@@ -400,22 +410,19 @@ public final class String implements Comparable<String>, CharSequence,
   public boolean equals(Object other) {
     // Java equality is translated into triple equality which is a quick to compare strings for
     // equality without any instanceOf checks.
-    return this == other;
+    return checkNotNull(this) == other;
   }
 
   public boolean equalsIgnoreCase(String other) {
-    return equalsIgnoreCase(this, other);
-  }
-
-  private static native boolean equalsIgnoreCase(String s, String other) /*-{
+    checkNotNull(this);
     if (other == null) {
       return false;
     }
-    if (s == other) {
+    if (equals(other)) {
       return true;
     }
-    return (s.length == other.length) && (s.toLowerCase() == other.toLowerCase());
-  }-*/;
+    return length() == other.length() && toLowerCase().equals(other.toLowerCase());
+  }
 
   public byte[] getBytes() {
     // default character set for GWT is UTF-8
@@ -431,14 +438,20 @@ public final class String implements Comparable<String>, CharSequence,
   }
 
   public void getChars(int srcBegin, int srcEnd, char[] dst, int dstBegin) {
-    for (int srcIdx = srcBegin; srcIdx < srcEnd; ++srcIdx) {
-      dst[dstBegin++] = charAt(srcIdx);
+    checkCriticalStringBounds(srcBegin, srcEnd, length());
+    checkCriticalStringBounds(dstBegin, dstBegin + (srcEnd - srcBegin), dst.length);
+    getChars0(srcBegin, srcEnd, dst, dstBegin);
+  }
+
+  private void getChars0(int srcBegin, int srcEnd, char[] dst, int dstBegin) {
+    while (srcBegin < srcEnd) {
+      dst[dstBegin++] = charAt(srcBegin++);
     }
   }
 
   @Override
   public int hashCode() {
-    return HashCodes.hashCodeForString(this);
+    return HashCodes.getStringHashCode(this);
   }
 
   public int indexOf(int codePoint) {
@@ -456,9 +469,9 @@ public final class String implements Comparable<String>, CharSequence,
   public int indexOf(String str, int startIndex) {
     return asNativeString().indexOf(str, startIndex);
   }
-  
+
   public String intern() {
-    return this;
+    return checkNotNull(this);
   }
 
   public boolean isEmpty() {
@@ -476,11 +489,11 @@ public final class String implements Comparable<String>, CharSequence,
   public int lastIndexOf(String str) {
     return asNativeString().lastIndexOf(str);
   }
-  
+
   public int lastIndexOf(String str, int start) {
     return asNativeString().lastIndexOf(str, start);
   }
-  
+
   @Override
   public int length() {
     return asNativeString().length;
@@ -496,11 +509,7 @@ public final class String implements Comparable<String>, CharSequence,
    */
   public boolean matches(String regex) {
     // We surround the regex with '^' and '$' because it must match the entire string.
-    return nativeMatches(new NativeRegExp("^(" + regex + ")$"));
-  }
-
-  boolean nativeMatches(NativeRegExp regex) {
-    return regex.test(this);
+    return new NativeRegExp("^(" + regex + ")$").test(this);
   }
 
   public int offsetByCodePoints(int index, int codePointOffset) {
@@ -509,13 +518,11 @@ public final class String implements Comparable<String>, CharSequence,
 
   public boolean regionMatches(boolean ignoreCase, int toffset, String other,
       int ooffset, int len) {
-    if (other == null) {
-      throw new NullPointerException();
-    }
+    checkNotNull(other);
     if (toffset < 0 || ooffset < 0 || len <= 0) {
       return false;
     }
-    if (toffset + len > this.length() || ooffset + len > other.length()) {
+    if (toffset + len > length() || ooffset + len > other.length()) {
       return false;
     }
 
@@ -672,11 +679,11 @@ public final class String implements Comparable<String>, CharSequence,
 
   @Override
   public CharSequence subSequence(int beginIndex, int endIndex) {
-    return this.substring(beginIndex, endIndex);
+    return substring(beginIndex, endIndex);
   }
 
   public String substring(int beginIndex) {
-    return asNativeString().substr(beginIndex, this.length() - beginIndex);
+    return asNativeString().substr(beginIndex, length() - beginIndex);
   }
 
   public String substring(int beginIndex, int endIndex) {
@@ -684,9 +691,9 @@ public final class String implements Comparable<String>, CharSequence,
   }
 
   public char[] toCharArray() {
-    int n = this.length();
+    int n = length();
     char[] charArr = new char[n];
-    getChars(0, n, charArr, 0);
+    getChars0(0, n, charArr, 0);
     return charArr;
   }
 
@@ -717,7 +724,7 @@ public final class String implements Comparable<String>, CharSequence,
   public String toUpperCase() {
     return asNativeString().toLocaleUpperCase();
   }
-  
+
   // See the notes in lowerCase pair.
   public String toUpperCase(Locale locale) {
     return locale == Locale.getDefault()
@@ -730,7 +737,7 @@ public final class String implements Comparable<String>, CharSequence,
      * Magic: this method is only used during compiler optimizations; the generated JS will instead alias
      * this method to the native String.prototype.toString() function.
      */
-    return this;
+    return checkNotNull(this);
   }
 
   public String trim() {
@@ -746,7 +753,7 @@ public final class String implements Comparable<String>, CharSequence,
     return start > 0 || end < length ? substring(start, end) : this;
   }
 
-  @JsType(isNative = true, name = "String", namespace = JsPackage.GLOBAL)
+  @JsType(isNative = true, name = "String", namespace = "<window>")
   private static class NativeString {
     public static native String fromCharCode(char x);
     public int length;
@@ -765,56 +772,45 @@ public final class String implements Comparable<String>, CharSequence,
 
   // CHECKSTYLE_OFF: Utility Methods for unboxed String.
 
-  @JsMethod(name = "$create")
-  private static String $createString() {
+  protected static String $create() {
     return "";
   }
 
-  @JsMethod(name = "$create__arrayOf_byte")
-  private static String $createString(byte[] bytes) {
-    return $createString(bytes, 0, bytes.length);
+  protected static String $create(byte[] bytes) {
+    return $create(bytes, 0, bytes.length);
   }
 
-  @JsMethod(name = "$create__arrayOf_byte__int__int")
-  private static String $createString(byte[] bytes, int ofs, int len) {
-    return $createString(bytes, ofs, len, EmulatedCharset.UTF_8);
+  protected static String $create(byte[] bytes, int ofs, int len) {
+    return $create(bytes, ofs, len, EmulatedCharset.UTF_8);
   }
 
-  @JsMethod(name = "$create__arrayOf_byte__int__int__java_lang_String")
-  private static String $createString(byte[] bytes, int ofs, int len, String charsetName)
+  protected static String $create(byte[] bytes, int ofs, int len, String charsetName)
       throws UnsupportedEncodingException {
-    return $createString(bytes, ofs, len, String.getCharset(charsetName));
+    return $create(bytes, ofs, len, String.getCharset(charsetName));
   }
 
-  @JsMethod(name = "$create__arrayOf_byte__int__int__java_nio_charset_Charset")
-  private static String $createString(byte[] bytes, int ofs, int len, Charset charset) {
+  protected static String $create(byte[] bytes, int ofs, int len, Charset charset) {
     return String.valueOf(((EmulatedCharset) charset).decodeString(bytes, ofs, len));
   }
 
-  @JsMethod(name = "$create__arrayOf_byte__java_lang_String")
-  private static String $createString(byte[] bytes, String charsetName)
+  protected static String $create(byte[] bytes, String charsetName)
       throws UnsupportedEncodingException {
-    return $createString(bytes, 0, bytes.length, charsetName);
+    return $create(bytes, 0, bytes.length, charsetName);
   }
 
-  @JsMethod(name = "$create__arrayOf_byte__java_nio_charset_Charset")
-  private static String $createString(byte[] bytes, Charset charset)
-      throws UnsupportedEncodingException {
-    return $createString(bytes, 0, bytes.length, charset.name());
+  protected static String $create(byte[] bytes, Charset charset) {
+    return $create(bytes, 0, bytes.length, charset);
   }
 
-  @JsMethod(name = "$create__arrayOf_char")
-  private static String $createString(char value[]) {
+  protected static String $create(char value[]) {
     return String.valueOf(value);
   }
 
-  @JsMethod(name = "$create__arrayOf_char__int__int")
-  private static String $createString(char value[], int offset, int count) {
+  protected static String $create(char value[], int offset, int count) {
     return String.valueOf(value, offset, count);
   }
 
-  @JsMethod(name = "$create__arrayOf_int__int__int")
-  private static String $createString(int[] codePoints, int offset, int count) {
+  protected static String $create(int[] codePoints, int offset, int count) {
     char[] chars = new char[count * 2];
     int charIdx = 0;
     while (count-- > 0) {
@@ -823,23 +819,20 @@ public final class String implements Comparable<String>, CharSequence,
     return String.valueOf(chars, 0, charIdx);
   }
 
-  @JsMethod(name = "$create__java_lang_String")
-  private static String $createString(String other) {
-    return other;
+  protected static String $create(String other) {
+    return checkNotNull(other);
   }
 
-  @JsMethod(name = "$create__java_lang_StringBuffer")
-  private static String $createString(StringBuffer sb) {
-    return String.valueOf(sb);
+  protected static String $create(StringBuffer sb) {
+    return sb.toString();
   }
 
-  @JsMethod(name = "$create__java_lang_StringBuilder")
-  private static String $createString(StringBuilder sb) {
-    return String.valueOf(sb);
+  protected static String $create(StringBuilder sb) {
+    return sb.toString();
   }
 
   @JsMethod
-  private static boolean $isInstance(Object instance) {
+  protected static boolean $isInstance(Object instance) {
     return "string".equals(JsUtils.typeOf(instance));
   }
   // CHECKSTYLE_ON: end utility methods

@@ -16,6 +16,7 @@
 package com.google.gwt.emultest.java.util;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -110,6 +111,12 @@ public class ArraysTest extends EmulTestBase {
    */
   @SuppressWarnings("unchecked")
   public void testAsList() {
+    try {
+      Arrays.asList((Object[]) null);
+      fail();
+    } catch (NullPointerException expected) {
+    }
+
     // 0
     Object[] test = {};
     List result = Arrays.asList(test);
@@ -201,11 +208,13 @@ public class ArraysTest extends EmulTestBase {
     byte[] a1 = {};
     int ret = Arrays.binarySearch(a1, (byte) 0);
     assertEquals(-1, ret);
+
     byte[] a2 = {1, 7, 31};
     ret = Arrays.binarySearch(a2, (byte) 3);
     assertEquals(-2, ret);
     ret = Arrays.binarySearch(a2, (byte) 31);
     assertEquals(2, ret);
+
     byte[] a3 = {-71, 0, 35, 36};
     ret = Arrays.binarySearch(a3, (byte) 42);
     assertEquals(-5, ret);
@@ -213,6 +222,10 @@ public class ArraysTest extends EmulTestBase {
     assertEquals(-1, ret);
     ret = Arrays.binarySearch(a3, (byte) -71);
     assertEquals(0, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, (byte) 35);
+    assertEquals(2, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, (byte) -71);
+    assertEquals(-2, ret);
   }
 
   /**
@@ -231,11 +244,13 @@ public class ArraysTest extends EmulTestBase {
     char[] a1 = {};
     int ret = Arrays.binarySearch(a1, (char) 0);
     assertEquals(-1, ret);
+
     char[] a2 = {1, 7, 31};
     ret = Arrays.binarySearch(a2, (char) 3);
     assertEquals(-2, ret);
     ret = Arrays.binarySearch(a2, (char) 31);
     assertEquals(2, ret);
+
     char[] a3 = {1, 2, 35, 36};
     ret = Arrays.binarySearch(a3, (char) 42);
     assertEquals(-5, ret);
@@ -243,6 +258,10 @@ public class ArraysTest extends EmulTestBase {
     assertEquals(-1, ret);
     ret = Arrays.binarySearch(a3, (char) 1);
     assertEquals(0, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, (char) 35);
+    assertEquals(2, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, (char) 1);
+    assertEquals(-2, ret);
   }
 
   /**
@@ -262,11 +281,13 @@ public class ArraysTest extends EmulTestBase {
     double[] a1 = {};
     int ret = Arrays.binarySearch(a1, 0);
     assertEquals(-1, ret);
+
     double[] a2 = {1, 7, 31};
     ret = Arrays.binarySearch(a2, 3);
     assertEquals(-2, ret);
     ret = Arrays.binarySearch(a2, 31);
     assertEquals(2, ret);
+
     double[] a3 = {-71, 0, 35, 36};
     ret = Arrays.binarySearch(a3, 42);
     assertEquals(-5, ret);
@@ -274,6 +295,10 @@ public class ArraysTest extends EmulTestBase {
     assertEquals(-1, ret);
     ret = Arrays.binarySearch(a3, -71);
     assertEquals(0, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, 35);
+    assertEquals(2, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, -71);
+    assertEquals(-2, ret);
   }
 
   /**
@@ -293,11 +318,13 @@ public class ArraysTest extends EmulTestBase {
     float[] a1 = {};
     int ret = Arrays.binarySearch(a1, 0);
     assertEquals(-1, ret);
+
     float[] a2 = {1, 7, 31};
     ret = Arrays.binarySearch(a2, 3);
     assertEquals(-2, ret);
     ret = Arrays.binarySearch(a2, 31);
     assertEquals(2, ret);
+
     float[] a3 = {-71, 0, 35, 36};
     ret = Arrays.binarySearch(a3, 42);
     assertEquals(-5, ret);
@@ -305,6 +332,10 @@ public class ArraysTest extends EmulTestBase {
     assertEquals(-1, ret);
     ret = Arrays.binarySearch(a3, -71);
     assertEquals(0, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, 35);
+    assertEquals(2, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, -71);
+    assertEquals(-2, ret);
   }
 
   /**
@@ -324,11 +355,13 @@ public class ArraysTest extends EmulTestBase {
     int[] a1 = {};
     int ret = Arrays.binarySearch(a1, 0);
     assertEquals(-1, ret);
+
     int[] a2 = {1, 7, 31};
     ret = Arrays.binarySearch(a2, 3);
     assertEquals(-2, ret);
     ret = Arrays.binarySearch(a2, 31);
     assertEquals(2, ret);
+
     int[] a3 = {-71, 0, 35, 36};
     ret = Arrays.binarySearch(a3, 42);
     assertEquals(-5, ret);
@@ -336,6 +369,10 @@ public class ArraysTest extends EmulTestBase {
     assertEquals(-1, ret);
     ret = Arrays.binarySearch(a3, -71);
     assertEquals(0, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, 35);
+    assertEquals(2, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, -71);
+    assertEquals(-2, ret);
   }
 
   /**
@@ -355,11 +392,13 @@ public class ArraysTest extends EmulTestBase {
     long[] a1 = {};
     int ret = Arrays.binarySearch(a1, 0L);
     assertEquals(-1, ret);
+
     long[] a2 = {1, 7, 31};
     ret = Arrays.binarySearch(a2, 3L);
     assertEquals(-2, ret);
     ret = Arrays.binarySearch(a2, 31L);
     assertEquals(2, ret);
+
     long[] a3 = {-71, 0, 35, 36};
     ret = Arrays.binarySearch(a3, 42L);
     assertEquals(-5, ret);
@@ -367,6 +406,10 @@ public class ArraysTest extends EmulTestBase {
     assertEquals(-1, ret);
     ret = Arrays.binarySearch(a3, -71L);
     assertEquals(0, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, 35);
+    assertEquals(2, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, -71);
+    assertEquals(-2, ret);
   }
 
   /**
@@ -385,11 +428,13 @@ public class ArraysTest extends EmulTestBase {
     Object[] a1 = {};
     int ret = Arrays.binarySearch(a1, "");
     assertEquals(-1, ret);
+
     Object[] a2 = {"a", "g", "y"};
     ret = Arrays.binarySearch(a2, "c");
     assertEquals(-2, ret);
     ret = Arrays.binarySearch(a2, "y");
     assertEquals(2, ret);
+
     Object[] a3 = {"b", "c", "x", "y"};
     ret = Arrays.binarySearch(a3, "z");
     assertEquals(-5, ret);
@@ -397,6 +442,10 @@ public class ArraysTest extends EmulTestBase {
     assertEquals(-1, ret);
     ret = Arrays.binarySearch(a3, "b");
     assertEquals(0, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, "x");
+    assertEquals(2, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, "b");
+    assertEquals(-2, ret);
   }
 
   /**
@@ -414,20 +463,17 @@ public class ArraysTest extends EmulTestBase {
    */
   @SuppressWarnings("unchecked")
   public void testBinarySearchObjectComparator() {
-    Comparator inverseSort = new Comparator() {
-      @Override
-      public int compare(Object o1, Object o2) {
-        return ((Comparable) o2).compareTo(o1);
-      }
-    };
+    final Comparator inverseSort = Collections.reverseOrder();
     Object[] a1 = {};
     int ret = Arrays.binarySearch(a1, "", inverseSort);
     assertEquals(-1, ret);
+
     Object[] a2 = {"y", "g", "a"};
     ret = Arrays.binarySearch(a2, "c", inverseSort);
     assertEquals(-3, ret);
     ret = Arrays.binarySearch(a2, "a", inverseSort);
     assertEquals(2, ret);
+
     Object[] a3 = {"y", "x", "c", "b"};
     ret = Arrays.binarySearch(a3, "a", inverseSort);
     assertEquals(-5, ret);
@@ -435,6 +481,10 @@ public class ArraysTest extends EmulTestBase {
     assertEquals(-1, ret);
     ret = Arrays.binarySearch(a3, "y", inverseSort);
     assertEquals(0, ret);
+    ret = Arrays.binarySearch(a3, 1, 3, "x", inverseSort);
+    assertEquals(1, ret);
+    ret = Arrays.binarySearch(a3, 1, 3, "b", inverseSort);
+    assertEquals(-4, ret);
 
     Object[] a4 = {"a", "b", "c", "d", "e"};
     ret = Arrays.binarySearch(a4, "d", null); // should not NPE
@@ -458,11 +508,13 @@ public class ArraysTest extends EmulTestBase {
     short[] a1 = {};
     int ret = Arrays.binarySearch(a1, (short) 0);
     assertEquals(-1, ret);
+
     short[] a2 = {1, 7, 31};
     ret = Arrays.binarySearch(a2, (short) 3);
     assertEquals(-2, ret);
     ret = Arrays.binarySearch(a2, (short) 31);
     assertEquals(2, ret);
+
     short[] a3 = {-71, 0, 35, 36};
     ret = Arrays.binarySearch(a3, (short) 42);
     assertEquals(-5, ret);
@@ -470,6 +522,10 @@ public class ArraysTest extends EmulTestBase {
     assertEquals(-1, ret);
     ret = Arrays.binarySearch(a3, (short) -71);
     assertEquals(0, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, (short) 35);
+    assertEquals(2, ret);
+    ret = Arrays.binarySearch(a3, 1, 4, (short) -71);
+    assertEquals(-2, ret);
   }
 
   /**
@@ -483,6 +539,9 @@ public class ArraysTest extends EmulTestBase {
 
     ret = Arrays.copyOf(a1, 2);
     assertTrue(Arrays.equals(new boolean[]{true, true}, ret));
+
+    ret = Arrays.copyOf(a1, 0);
+    assertEquals(0, ret.length);
 
     ret = Arrays.copyOf(a1, a1.length * 2);
     assertEquals(a1.length * 2, ret.length);
@@ -503,6 +562,9 @@ public class ArraysTest extends EmulTestBase {
     for (; i < ret.length; i++) {
       assertEquals(false, ret[i]);
     }
+
+    ret = Arrays.copyOf(new boolean[] {false, true}, 3);
+    assertTrue(Arrays.equals(new boolean[] {false, true, false}, ret));
   }
 
   /**
@@ -516,6 +578,9 @@ public class ArraysTest extends EmulTestBase {
 
     ret = Arrays.copyOf(a1, 2);
     assertTrue(Arrays.equals(new byte[] {9, 8}, ret));
+
+    ret = Arrays.copyOf(a1, 0);
+    assertEquals(0, ret.length);
 
     ret = Arrays.copyOf(a1, a1.length * 2);
     assertEquals(a1.length * 2, ret.length);
@@ -536,6 +601,9 @@ public class ArraysTest extends EmulTestBase {
     for (; i < ret.length; i++) {
       assertEquals((byte) 0, ret[i]);
     }
+
+    ret = Arrays.copyOf(new byte[] {1, 2}, 3);
+    assertTrue(Arrays.equals(new byte[] {1, 2, 0}, ret));
   }
 
   /**
@@ -549,6 +617,9 @@ public class ArraysTest extends EmulTestBase {
 
     ret = Arrays.copyOf(a1, 2);
     assertTrue(Arrays.equals(new char[] {9, 8}, ret));
+
+    ret = Arrays.copyOf(a1, 0);
+    assertEquals(0, ret.length);
 
     ret = Arrays.copyOf(a1, a1.length * 2);
     assertEquals(a1.length * 2, ret.length);
@@ -569,6 +640,9 @@ public class ArraysTest extends EmulTestBase {
     for (; i < ret.length; i++) {
       assertEquals((char) 0, ret[i]);
     }
+
+    ret = Arrays.copyOf(new char[] {1, 2}, 3);
+    assertTrue(Arrays.equals(new char[] {1, 2, 0}, ret));
   }
 
   /**
@@ -582,6 +656,9 @@ public class ArraysTest extends EmulTestBase {
 
     ret = Arrays.copyOf(a1, 2);
     assertTrue(Arrays.equals(new double[] {0.5, 1.25}, ret));
+
+    ret = Arrays.copyOf(a1, 0);
+    assertEquals(0, ret.length);
 
     ret = Arrays.copyOf(a1, a1.length * 2);
     assertEquals(a1.length * 2, ret.length);
@@ -602,6 +679,9 @@ public class ArraysTest extends EmulTestBase {
     for (; i < ret.length; i++) {
       assertEquals(0., ret[i]);
     }
+
+    ret = Arrays.copyOf(new double[] {1, 2}, 3);
+    assertTrue(Arrays.equals(new double[] {1, 2, 0}, ret));
   }
 
   /**
@@ -615,6 +695,9 @@ public class ArraysTest extends EmulTestBase {
 
     ret = Arrays.copyOf(a1, 2);
     assertTrue(Arrays.equals(new float[] {0.5f, 1.25f}, ret));
+
+    ret = Arrays.copyOf(a1, 0);
+    assertEquals(0, ret.length);
 
     ret = Arrays.copyOf(a1, a1.length * 2);
     assertEquals(a1.length * 2, ret.length);
@@ -635,6 +718,9 @@ public class ArraysTest extends EmulTestBase {
     for (; i < ret.length; i++) {
       assertEquals(0f, ret[i]);
     }
+
+    ret = Arrays.copyOf(new float[] {1, 2}, 3);
+    assertTrue(Arrays.equals(new float[] {1, 2, 0}, ret));
   }
 
   /**
@@ -648,6 +734,9 @@ public class ArraysTest extends EmulTestBase {
 
     ret = Arrays.copyOf(a1, 2);
     assertTrue(Arrays.equals(new int[] {9, 8}, ret));
+
+    ret = Arrays.copyOf(a1, 0);
+    assertEquals(0, ret.length);
 
     ret = Arrays.copyOf(a1, a1.length * 2);
     assertEquals(a1.length * 2, ret.length);
@@ -668,6 +757,9 @@ public class ArraysTest extends EmulTestBase {
     for (; i < ret.length; i++) {
       assertEquals(0, ret[i]);
     }
+
+    ret = Arrays.copyOf(new int[] {1, 2}, 3);
+    assertTrue(Arrays.equals(new int[] {1, 2, 0}, ret));
   }
 
   /**
@@ -681,6 +773,9 @@ public class ArraysTest extends EmulTestBase {
 
     ret = Arrays.copyOf(a1, 2);
     assertTrue(Arrays.equals(new long[] {9, 8}, ret));
+
+    ret = Arrays.copyOf(a1, 0);
+    assertEquals(0, ret.length);
 
     ret = Arrays.copyOf(a1, a1.length * 2);
     assertEquals(a1.length * 2, ret.length);
@@ -701,6 +796,9 @@ public class ArraysTest extends EmulTestBase {
     for (; i < ret.length; i++) {
       assertEquals(0L, ret[i]);
     }
+
+    ret = Arrays.copyOf(new long[] {1, 2}, 3);
+    assertTrue(Arrays.equals(new long[] {1, 2, 0}, ret));
   }
 
   /**
@@ -714,6 +812,9 @@ public class ArraysTest extends EmulTestBase {
 
     ret = Arrays.copyOf(a1, 2);
     assertTrue(Arrays.equals(new short[] {9, 8}, ret));
+
+    ret = Arrays.copyOf(a1, 0);
+    assertEquals(0, ret.length);
 
     ret = Arrays.copyOf(a1, a1.length * 2);
     assertEquals(a1.length * 2, ret.length);
@@ -734,6 +835,9 @@ public class ArraysTest extends EmulTestBase {
     for (; i < ret.length; i++) {
       assertEquals((short) 0, ret[i]);
     }
+
+    ret = Arrays.copyOf(new short[] {1, 2}, 3);
+    assertTrue(Arrays.equals(new short[] {1, 2, 0}, ret));
   }
 
   /**
@@ -751,6 +855,9 @@ public class ArraysTest extends EmulTestBase {
 
     ret = Arrays.copyOf(a1, 2);
     assertTrue(Arrays.equals(new Object[] {null, obj1}, ret));
+
+    ret = Arrays.copyOf(a1, 0);
+    assertEquals(0, ret.length);
 
     ret = Arrays.copyOf(a1, a1.length * 2);
     assertEquals(a1.length * 2, ret.length);
@@ -771,6 +878,9 @@ public class ArraysTest extends EmulTestBase {
     for (; i < ret.length; i++) {
       assertEquals(null, ret[i]);
     }
+
+    ret = Arrays.copyOf(new Object[] {obj1, obj2}, 3);
+    assertTrue(Arrays.equals(new Object[] {obj1, obj2, null}, ret));
   }
 
   /**
@@ -1159,14 +1269,29 @@ public class ArraysTest extends EmulTestBase {
    * Tests sorting of long primitives.
    */
   public void testLongSort() {
-    long[] x = {3, 11, 2, 1, 22, 3};
-    Arrays.sort(x);
-    assertEquals(1, x[0]);
-    assertEquals(2, x[1]);
-    assertEquals(3, x[2]);
-    assertEquals(3, x[3]);
-    assertEquals(11, x[4]);
-    assertEquals(22, x[5]);
+    long[] array = new long[0];
+    Arrays.sort(array);
+
+    array = new long[]{Long.MIN_VALUE, 1, 2, 3, Long.MAX_VALUE};
+    Arrays.sort(array);
+    assertTrue(Arrays.equals(new long[]{Long.MIN_VALUE, 1, 2, 3, Long.MAX_VALUE}, array));
+
+    array = new long[]{3, Long.MAX_VALUE, 3, 2, 1, Long.MIN_VALUE};
+    Arrays.sort(array);
+    assertTrue(Arrays.equals(new long[]{Long.MIN_VALUE, 1, 2, 3, 3, Long.MAX_VALUE}, array));
+  }
+
+  /**
+   * Tests sorting of long primitives sub-range.
+   */
+  public void testLongSubrangeSort() {
+    long[] array = new long[]{3, Long.MAX_VALUE, 3, 2, 1, Long.MIN_VALUE};
+    Arrays.sort(array, 2, 5);
+    assertTrue(Arrays.equals(new long[]{3, Long.MAX_VALUE, 1, 2, 3, Long.MIN_VALUE}, array));
+
+    array = new long[]{3, Long.MAX_VALUE, 3, 2, 1, Long.MIN_VALUE};
+    Arrays.sort(array, 0, 0);
+    assertTrue(Arrays.equals(new long[]{3, Long.MAX_VALUE, 3, 2, 1, Long.MIN_VALUE}, array));
   }
 
   /**
@@ -1183,28 +1308,29 @@ public class ArraysTest extends EmulTestBase {
    * Tests sorting primitives.
    */
   public void testPrimitiveSort() {
-    int[] x = {3, 11, 2, 1, 22, 3};
-    Arrays.sort(x);
-    assertEquals(1, x[0]);
-    assertEquals(2, x[1]);
-    assertEquals(3, x[2]);
-    assertEquals(3, x[3]);
-    assertEquals(11, x[4]);
-    assertEquals(22, x[5]);
+    int[] array = new int[0];
+    Arrays.sort(array);
+
+    array = new int[]{Integer.MIN_VALUE, 1, 2, 3, Integer.MAX_VALUE};
+    Arrays.sort(array);
+    assertTrue(Arrays.equals(new int[]{Integer.MIN_VALUE, 1, 2, 3, Integer.MAX_VALUE}, array));
+
+    array = new int[]{3, Integer.MAX_VALUE, 3, 2, 1, Integer.MIN_VALUE};
+    Arrays.sort(array);
+    assertTrue(Arrays.equals(new int[]{Integer.MIN_VALUE, 1, 2, 3, 3, Integer.MAX_VALUE}, array));
   }
 
   /**
    * Tests sorting a subrange of a primitive array.
    */
   public void testPrimitiveSubrangeSort() {
-    int[] x = {3, 11, 2, 1, 22, 3};
-    Arrays.sort(x, 1, 5);
-    assertEquals(3, x[0]);
-    assertEquals(1, x[1]);
-    assertEquals(2, x[2]);
-    assertEquals(11, x[3]);
-    assertEquals(22, x[4]);
-    assertEquals(3, x[5]);
+    int[] array = new int[]{3, Integer.MAX_VALUE, 3, 2, 1, Integer.MIN_VALUE};
+    Arrays.sort(array, 2, 5);
+    assertTrue(Arrays.equals(new int[]{3, Integer.MAX_VALUE, 1, 2, 3, Integer.MIN_VALUE}, array));
+
+    array = new int[]{3, Integer.MAX_VALUE, 3, 2, 1, Integer.MIN_VALUE};
+    Arrays.sort(array, 0, 0);
+    assertTrue(Arrays.equals(new int[]{3, Integer.MAX_VALUE, 3, 2, 1, Integer.MIN_VALUE}, array));
   }
 
   /**
@@ -1231,25 +1357,48 @@ public class ArraysTest extends EmulTestBase {
    * Tests {@link Arrays#sort(Object[], Comparator)}.
    */
   public void testSort() {
-    Object[] x = {"c", "b", "b", "a"};
-    int hash = x[1].hashCode();
-    Arrays.sort(x);
-    int hash2 = x[1].hashCode();
-    assertEquals(hash, hash2);
-    Object[] sorted = {"a", "b", "b", "c"};
-    assertEquals(x, sorted);
-    Comparator<Object> t = new Comparator<Object>() {
+    Object[] array = {"c", "b", "b", "a"};
+    Arrays.sort(array);
+    assertEquals(new Object[]{"a", "b", "b", "c"}, array);
+
+    array = new Object[]{"c", "b", "b", "a"};
+    Comparator<Object> natural = new Comparator<Object>() {
       @Override
       @SuppressWarnings("unchecked")
-      public int compare(Object o1, Object o2) {
-        return ((Comparable<Object>) o2).compareTo(o1);
+      public int compare(Object a, Object b) {
+        return ((Comparable<Object>) a).compareTo(b);
       }
     };
-    Arrays.sort(x, t);
-    int hash3 = x[1].hashCode();
-    assertEquals(hash, hash3);
-    Object[] reverseSorted = {"c", "b", "b", "a"};
-    assertEquals(x, reverseSorted);
+    Arrays.sort(array, natural);
+    assertEquals(new Object[]{"a", "b", "b", "c"}, array);
+
+    array = new Object[]{"c", "b", "b", "a"};
+    Arrays.sort(array, Collections.reverseOrder());
+    assertEquals(new Object[]{"c", "b", "b", "a"}, array);
+
+    array = new Object[]{"c", "b", "b", "a"};
+    Arrays.sort(array, null);
+    assertEquals(new Object[]{"a", "b", "b", "c"}, array);
+  }
+
+  /**
+   * Tests sorting of Object array sub-range.
+   */
+  public void testSortSubRange() {
+    Object[] array = {"c", "b", "b", "a"};
+    Arrays.sort(array, 0, 0);
+    assertEquals(new Object[]{"c", "b", "b", "a"}, array);
+
+    array = new Object[]{"c", "b", "b", "a"};
+    Arrays.sort(array, 1, 2);
+    assertEquals(new Object[]{"c", "b", "b", "a"}, array);
+
+    Arrays.sort(array, 1, 4);
+    assertEquals(new Object[]{"c", "a", "b", "b"}, array);
+
+    array = new Object[]{"c", "b", "b", "a"};
+    Arrays.sort(array, 1, 4, Collections.reverseOrder());
+    assertEquals(new Object[]{"c", "b", "b", "a"}, array);
   }
 
   /**
@@ -1261,6 +1410,17 @@ public class ArraysTest extends EmulTestBase {
    * test.
    */
   public void testStableSort() {
+    Comparator<TestObject> comparator = new Comparator<TestObject>() {
+      @Override
+      public int compare(TestObject a, TestObject b) {
+        return a.getValue() - b.getValue();
+      }
+    };
+    testStableSort(comparator);
+    testStableSort(Collections.reverseOrder(comparator));
+  }
+
+  private void testStableSort(Comparator<TestObject> comparator) {
     TestObject[] origData = new TestObject[] {
         new TestObject(3), new TestObject(11), new TestObject(2),
         new TestObject(3), new TestObject(1), new TestObject(3),
@@ -1268,15 +1428,13 @@ public class ArraysTest extends EmulTestBase {
     int[] permutation = new int[origData.length];
     while (validPermutation(permutation, origData.length)) {
       TestObject[] permutedArray = getPermutation(origData, permutation);
-      Arrays.sort(permutedArray, new Comparator<TestObject>() {
-        @Override
-        public int compare(TestObject a, TestObject b) {
-          return a.getValue() - b.getValue();
-        }
-      });
+      Arrays.sort(permutedArray, comparator);
       for (int i = 1; i < permutedArray.length; ++i) {
-        if (permutedArray[i - 1].getValue() > permutedArray[i].getValue()
-            || (permutedArray[i - 1].getValue() == permutedArray[i].getValue() && permutedArray[i - 1].getIndex() > permutedArray[i].getIndex())) {
+        TestObject prev = permutedArray[i - 1];
+        TestObject cur = permutedArray[i];
+        int cmp = comparator.compare(prev, cur);
+        if (cmp > 0
+            || (cmp == 0 && prev.getIndex() > cur.getIndex())) {
           String msg = "Permutation " + Arrays.toString(permutation) + ": "
               + Arrays.toString(permutedArray);
           permutedArray = getPermutation(origData, permutation);
@@ -1380,5 +1538,4 @@ public class ArraysTest extends EmulTestBase {
     }
     return true;
   }
-
 }

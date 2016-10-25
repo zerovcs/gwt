@@ -52,7 +52,7 @@ import java.util.Set;
  * initializer in the superclass chain needs to be called.
  */
 public abstract class JDeclaredType extends JReferenceType
-    implements CanHaveSuppressedWarnings, HasJsName {
+    implements CanHaveSuppressedWarnings, HasJsName, CanBeJsNative {
 
   private boolean isJsFunction;
   private boolean isJsType;
@@ -284,6 +284,10 @@ public abstract class JDeclaredType extends JReferenceType
       return new String[] { getShortName() };
     }
 
+    assert getShortName().startsWith(enclosingType.getShortName())
+        : "Innerclass name  " + getShortName() + " does not start with enclosing class name "
+        + enclosingType.getShortName();
+
     String className = StringInterner.get().intern(
         getShortName().substring(enclosingType.getShortName().length() + 1));
 
@@ -377,10 +381,6 @@ public abstract class JDeclaredType extends JReferenceType
   @Override
   public boolean isJsFunction() {
     return isJsFunction;
-  }
-
-  public boolean isJsFunctionImplementation() {
-    return false;
   }
 
   public boolean isClassWideExport() {

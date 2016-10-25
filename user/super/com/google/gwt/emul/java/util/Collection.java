@@ -15,13 +15,23 @@
  */
 package java.util;
 
+import static javaemul.internal.InternalPreconditions.checkNotNull;
+
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import jsinterop.annotations.JsIgnore;
+import jsinterop.annotations.JsType;
+
 /**
- * General-purpose interface for storing collections of objects. <a
- * href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Collection.html">[Sun
- * docs]</a>
+ * General-purpose interface for storing collections of objects.
+ * See <a href="https://docs.oracle.com/javase/8/docs/api/java/util/Collection.html">
+ * the official Java API doc</a> for details.
  *
  * @param <E> element type
  */
+@JsType
 public interface Collection<E> extends Iterable<E> {
 
   boolean add(E o);
@@ -34,26 +44,48 @@ public interface Collection<E> extends Iterable<E> {
 
   boolean containsAll(Collection<?> c);
 
-  @Override
-  boolean equals(Object o);
-
-  @Override
-  int hashCode();
-
   boolean isEmpty();
 
-  @Override
-  Iterator<E> iterator();
+  @JsIgnore
+  default Stream<E> parallelStream() {
+    // no parallelism in gwt
+    return stream();
+  }
 
   boolean remove(Object o);
 
   boolean removeAll(Collection<?> c);
 
+  @JsIgnore
+  default boolean removeIf(Predicate<? super E> filter) {
+    checkNotNull(filter);
+    boolean removed = false;
+    for (Iterator<E> it = iterator(); it.hasNext();) {
+      if (filter.test(it.next())) {
+        it.remove();
+        removed = true;
+      }
+    }
+    return removed;
+  }
+
   boolean retainAll(Collection<?> c);
 
   int size();
 
+  @JsIgnore
+  @Override
+  default Spliterator<E> spliterator() {
+    return Spliterators.spliterator(this, 0);
+  }
+
+  @JsIgnore
+  default Stream<E> stream() {
+    return StreamSupport.stream(spliterator(), false);
+  }
+
   Object[] toArray();
 
+  @JsIgnore
   <T> T[] toArray(T[] a);
 }

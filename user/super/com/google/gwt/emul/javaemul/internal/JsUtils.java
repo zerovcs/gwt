@@ -20,8 +20,16 @@ package javaemul.internal;
  */
 public class JsUtils {
 
-  public static native double getInfinity() /*-{
-    return Infinity;
+  public static native int compare(String a, String b) /*-{
+    return a == b ? 0 : (a < b ? -1 : 1);
+  }-*/;
+
+  public static native boolean isFinite(double d) /*-{
+    return isFinite(d);
+  }-*/;
+
+  public static native boolean isNaN(double d) /*-{
+    return isNaN(d);
   }-*/;
 
   public static native int parseInt(String s, int radix) /*-{
@@ -32,9 +40,20 @@ public class JsUtils {
     return value === undefined;
   }-*/;
 
-  // TODO(goktug): replace this with a real cast when the compiler can optimize it.
   public static native String unsafeCastToString(Object string) /*-{
    return string;
+  }-*/;
+
+  public static native double unsafeCastToDouble(Object number) /*-{
+   return number;
+  }-*/;
+
+  public static native boolean unsafeCastToBoolean(Object bool) /*-{
+   return bool;
+  }-*/;
+
+  public static native <T> T getProperty(Object map, String key) /*-{
+    return map[key];
   }-*/;
 
   public static native void setPropertySafe(Object map, String key, Object value) /*-{
@@ -54,6 +73,14 @@ public class JsUtils {
 
   public static native String typeOf(Object o) /*-{
     return typeof o;
+  }-*/;
+
+  public static native boolean hasComparableTypeMarker(Object o) /*-{
+    return o.$implements__java_lang_Comparable;
+  }-*/;
+
+  public static native boolean hasCharSequenceTypeMarker(Object o) /*-{
+    return o.$implements__java_lang_CharSequence;
   }-*/;
 }
 

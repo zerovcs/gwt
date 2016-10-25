@@ -80,12 +80,22 @@ public class JPrimitiveType extends JType {
   }
 
   @Override
+  public boolean isPrimitiveType() {
+    return true;
+  }
+
+  @Override
   public boolean isJsType() {
     return false;
   }
 
   @Override
   public boolean isJsFunction() {
+    return false;
+  }
+
+  @Override
+  public boolean isJsFunctionImplementation() {
     return false;
   }
 

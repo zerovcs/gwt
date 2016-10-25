@@ -21,10 +21,6 @@ import com.google.gwt.dev.javac.testing.impl.MockJavaResource;
 import com.google.gwt.dev.jjs.ast.JMethod;
 import com.google.gwt.dev.jjs.ast.JProgram;
 import com.google.gwt.dev.util.arg.SourceLevel;
-import com.google.gwt.thirdparty.guava.common.collect.Lists;
-
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * Tests for the JsInteropRestrictionChecker.
@@ -264,6 +260,30 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
     assertBuggyFails(
         "Line 10: 'boolean EntryPoint.Buggy.getX()' and 'boolean EntryPoint.Buggy.isX()' "
             + "cannot both use the same JavaScript name 'x'.");
+  }
+
+  public void testCollidingNativeJsPropertiesSucceeds() throws Exception {
+    addSnippetImport("jsinterop.annotations.JsType");
+    addSnippetImport("jsinterop.annotations.JsMethod");
+    addSnippetImport("jsinterop.annotations.JsProperty");
+    addSnippetClassDecl(
+        "@JsType(isNative=true)",
+        "public static class Buggy {",
+        "  @JsMethod",
+        "  public native int now();",
+        "  @JsProperty",
+        "  public native Object getNow();",
+        "  @JsMethod",
+        "  public static native int other();",
+        "  @JsProperty",
+        "  public static native Object getOther();",
+        "  @JsMethod",
+        "  public static native int another();",
+        "  @JsProperty",
+        "  public static Object another;",
+        "}");
+
+    assertBuggySucceeds();
   }
 
   public void testCollidingJsPropertiesTwoSettersFails() throws Exception {
@@ -990,15 +1010,112 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
     addSnippetImport("jsinterop.annotations.JsIgnore");
     addSnippetClassDecl(
         "@JsType",
-        "public static class Buggy {",
+        "static class Buggy {",
         "  public Buggy() {}",
         "  @JsIgnore",
         "  public Buggy(int a) {",
         "    this();",
         "  }",
+        "}",
+        "static class SubBuggy extends Buggy {",
+        "  public SubBuggy() { this(1);}",
+        "  public SubBuggy(int a) { super();}",
+        "}",
+        "@JsType",
+        "static class JsSubBuggy extends Buggy {",
+        "  @JsIgnore",
+        "  public JsSubBuggy() { this(1);}",
+        "  public JsSubBuggy(int a) { super();}",
+        "}",
+        "@JsType (isNative = true)",
+        "static class NativeBuggy {",
+        "  public NativeBuggy() {}",
+        "  public NativeBuggy(int a) {}",
+        "}",
+        "@JsType (isNative = true)",
+        "static class NativeSubNativeBuggy extends NativeBuggy{",
+        "  public NativeSubNativeBuggy() { super(1); }",
+        "  public NativeSubNativeBuggy(int a) { super();}",
+        "}",
+        "static class SubNativeBuggy extends NativeBuggy {",
+        "  public SubNativeBuggy() { this(1);}",
+        "  public SubNativeBuggy(int a) { super();}",
+        "}",
+        "static class SubSubNativeBuggy extends NativeBuggy {",
+        "  public SubSubNativeBuggy() { super(1);}",
+        "  public SubSubNativeBuggy(int a) { this(); }",
+        "}",
+        "static class SubNativeBuggyImplicitConstructor extends NativeBuggy {",
         "}");
 
     assertBuggySucceeds();
+  }
+
+  public void testMultipleConstructorsNonJsSubtypeRestrictionFails() {
+    addSnippetImport("jsinterop.annotations.JsConstructor");
+    addSnippetImport("jsinterop.annotations.JsIgnore");
+    addSnippetImport("jsinterop.annotations.JsType");
+    addSnippetClassDecl(
+        "@JsType",
+        "static class BuggyJsType {",
+        "  public BuggyJsType() {}",
+        "  @JsIgnore",
+        "  public BuggyJsType(int a) { this(); }",
+        "}",
+        "static class Buggy extends BuggyJsType {",
+        // Error: two non-delegation constructors"
+        "  public Buggy() {}",
+        "  public Buggy(int a) { super(a); }",
+        "}",
+        "static class SubBuggyJsType extends BuggyJsType {",
+        // Correct: one non-delegating constructor targeting super primary constructor
+        "  public SubBuggyJsType() { this(1); }",
+        "  public SubBuggyJsType(int a) { super(); }",
+        "}",
+        "static class SubSubBuggyJsType extends SubBuggyJsType {",
+        // Error: non-delegating constructor target the wrong super constructor.
+        "  public SubSubBuggyJsType() { this(1);}",
+        "  public SubSubBuggyJsType(int a) { super(); }",
+        "}",
+        "static class JsConstructorSubBuggyJsType extends SubBuggyJsType {",
+        // Error: non-delegating constructor target the wrong super constructor.
+        "  public JsConstructorSubBuggyJsType() { super(1);}",
+        "  @JsConstructor",
+        "  public JsConstructorSubBuggyJsType(int a) { super(); }",
+        "}",
+        "static class OtherSubBuggyJsType extends BuggyJsType {",
+        // Error: JsConstructor not delegating to super primary constructor.
+        "  public OtherSubBuggyJsType() { super();}",
+        "  @JsConstructor",
+        "  public OtherSubBuggyJsType(int a) { this(); }",
+        "}",
+        "static class AnotherSubBuggyJsType extends BuggyJsType {",
+        // Error: Multiple JsConstructors in JsConstructor subclass.
+        "  @JsConstructor",
+        "  public AnotherSubBuggyJsType() { super();}",
+        "  @JsConstructor",
+        "  public AnotherSubBuggyJsType(int a) { this(); }",
+        "}");
+
+    assertBuggyFails(
+        "Line 12: Class 'EntryPoint.Buggy' should have only one constructor delegating to the "
+            + "superclass since it is subclass of a a type with JsConstructor.",
+        "Line 22: Constructor 'EntryPoint.SubSubBuggyJsType.EntryPoint$SubSubBuggyJsType(int)' "
+            + "can only delegate to super constructor "
+            + "'EntryPoint.SubBuggyJsType.EntryPoint$SubBuggyJsType(int)' since it is a subclass "
+            + "of a type with JsConstructor.",
+        "Line 24: Class 'EntryPoint.JsConstructorSubBuggyJsType' should have only one constructor "
+            + "delegating to the superclass since it is subclass of a a type with JsConstructor.",
+        "Line 27: Constructor "
+            + "'EntryPoint.JsConstructorSubBuggyJsType.EntryPoint$JsConstructorSubBuggyJsType(int)'"
+            + " can be a JsConstructor only if all constructors in the class are delegating to it.",
+        "Line 32: Constructor 'EntryPoint.OtherSubBuggyJsType.EntryPoint$OtherSubBuggyJsType(int)' "
+            + "can be a JsConstructor only if all constructors in the class are delegating to it.",
+        "Line 34: More than one JsConstructor exists for 'EntryPoint.AnotherSubBuggyJsType'.",
+        "Line 38: 'EntryPoint.AnotherSubBuggyJsType.EntryPoint$AnotherSubBuggyJsType(int)' cannot "
+            + "be exported because the global name 'test.EntryPoint.AnotherSubBuggyJsType' is "
+            + "already taken by "
+            + "'EntryPoint.AnotherSubBuggyJsType.EntryPoint$AnotherSubBuggyJsType()'.");
   }
 
   public void testMultipleConstructorsNotAllDelegatedToJsConstructorFails()
@@ -1030,7 +1147,7 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
         "}");
 
     assertBuggyFails(
-        "Line 5: More than one JsConstructor exists for EntryPoint.Buggy.",
+        "Line 5: More than one JsConstructor exists for 'EntryPoint.Buggy'.",
         "Line 7: 'EntryPoint.Buggy.EntryPoint$Buggy(int)' cannot be exported because the global "
             + "name 'test.EntryPoint.Buggy' is already taken by "
             + "'EntryPoint.Buggy.EntryPoint$Buggy()'.");
@@ -1057,19 +1174,28 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
   public void testJsNameInvalidNamesFails() {
     addSnippetImport("jsinterop.annotations.JsType");
     addSnippetImport("jsinterop.annotations.JsMethod");
+    addSnippetImport("jsinterop.annotations.JsPackage");
     addSnippetImport("jsinterop.annotations.JsProperty");
     addSnippetClassDecl(
         "@JsType(name = \"a.b.c\") public static class Buggy {",
         "   @JsMethod(name = \"34s\") public void m() {}",
         "   @JsProperty(name = \"s^\") public int  m;",
         "   @JsProperty(name = \"\") public int n;",
-        "}");
+        "   @JsMethod(namespace = JsPackage.GLOBAL, name = \"a.b\") static void o() {}",
+        "   @JsProperty(namespace = JsPackage.GLOBAL, name = \"a.c\") static int q;",
+        "}",
+        "@JsType(namespace=JsPackage.GLOBAL, name = \"a.b.d\") public static class OtherBuggy {",
+        "}"
+        );
 
     assertBuggyFails(
-        "Line 6: 'EntryPoint.Buggy' has invalid name 'a.b.c'.",
-        "Line 7: 'void EntryPoint.Buggy.m()' has invalid name '34s'.",
-        "Line 8: 'int EntryPoint.Buggy.m' has invalid name 's^'.",
-        "Line 9: 'int EntryPoint.Buggy.n' cannot have an empty name.");
+        "Line 7: 'EntryPoint.Buggy' has invalid name 'a.b.c'.",
+        "Line 8: 'void EntryPoint.Buggy.m()' has invalid name '34s'.",
+        "Line 9: 'int EntryPoint.Buggy.m' has invalid name 's^'.",
+        "Line 10: 'int EntryPoint.Buggy.n' cannot have an empty name.",
+        "Line 11: 'void EntryPoint.Buggy.o()' has invalid name 'a.b'.",
+        "Line 12: 'int EntryPoint.Buggy.q' has invalid name 'a.c'.",
+        "Line 14: 'EntryPoint.OtherBuggy' has invalid name 'a.b.d'.");
   }
 
   public void testJsNameInvalidNamespacesFails() {
@@ -1083,6 +1209,10 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
         "   @JsMethod(namespace = \"\") public static void o() {}",
         "   @JsProperty(namespace = \"\") public int p;",
         "   @JsMethod(namespace = \"a\") public void q() {}",
+        "}",
+        "@JsType(namespace = \"<window>\") public static class JsTypeOnWindow{",
+        "   @JsProperty(namespace = \"<window>\") public static int r;",
+        "   @JsMethod(namespace = \"<window>\") public static  void s() {}",
         "}");
 
     assertBuggyFails(
@@ -1091,7 +1221,10 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
         "Line 8: 'int EntryPoint.Buggy.n' has invalid namespace 's^'.",
         "Line 9: 'void EntryPoint.Buggy.o()' cannot have an empty namespace.",
         "Line 10: Instance member 'int EntryPoint.Buggy.p' cannot declare a namespace.",
-        "Line 11: Instance member 'void EntryPoint.Buggy.q()' cannot declare a namespace.");
+        "Line 11: Instance member 'void EntryPoint.Buggy.q()' cannot declare a namespace.",
+        "Line 13: '<window>' can only be used as a namespace of native types and members.",
+        "Line 14: '<window>' can only be used as a namespace of native types and members.",
+        "Line 15: '<window>' can only be used as a namespace of native types and members.");
   }
 
   public void testJsNameGlobalNamespacesSucceeds() throws Exception {
@@ -1102,7 +1235,20 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
     addSnippetClassDecl(
         "@JsType(namespace = JsPackage.GLOBAL) public static class Buggy {",
         "   @JsMethod(namespace = JsPackage.GLOBAL) public static void m() {}",
-        "   @JsProperty(namespace = JsPackage.GLOBAL) public static int  n;",
+        "   @JsProperty(namespace = JsPackage.GLOBAL) public static int n;",
+        "   @JsMethod(namespace = JsPackage.GLOBAL, name = \"a.b\") public static native void o();",
+        "}",
+        "@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = \"a.c\")",
+        "public static class NativeOnGlobalNamespace {",
+        "   @JsMethod(namespace = JsPackage.GLOBAL, name = \"a.d\") static native void o();",
+        "   @JsMethod(namespace = JsPackage.GLOBAL, name = \"a.e\") static native void getP();",
+        "   @JsProperty(namespace = JsPackage.GLOBAL, name = \"a.f\") public static int n;",
+        "}",
+        "@JsType(isNative = true, namespace = \"<window>\", name = \"a.g\")",
+        "public static class NativeOnWindowNamespace {",
+        "   @JsMethod(namespace = \"<window>\", name = \"a.h\") static native void q();",
+        "   @JsMethod(namespace = \"<window>\", name = \"a.i\") static native void getR();",
+        "   @JsProperty(namespace = \"<window>\", name = \"a.j\") public static int s;",
         "}");
 
     assertBuggySucceeds();
@@ -1120,128 +1266,125 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
     assertBuggySucceeds();
   }
 
-  public void testJsFunctionWithNoExtendsSucceeds() throws Exception {
+  public void testJsFunctionSucceeds() throws Exception {
     addSnippetImport("jsinterop.annotations.JsFunction");
+    addSnippetImport("jsinterop.annotations.JsOverlay");
     addSnippetClassDecl(
         "@JsFunction",
-        "public interface Buggy {",
-        "  void foo();",
-        "}");
-
-    assertBuggySucceeds();
-  }
-
-  public void testJsFunctionExtendsInterfaceFails() throws Exception {
-    addSnippetImport("jsinterop.annotations.JsFunction");
-    addSnippetClassDecl(
-        "interface AnotherInterface {}",
-        "@JsFunction",
-        "public interface Buggy extends AnotherInterface {",
-        "  void foo();",
-        "}");
-
-    assertBuggyFails("Line 6: JsFunction 'EntryPoint.Buggy' cannot extend other interfaces.");
-  }
-
-  public void testJsFunctionExtendedByInterfaceFails() throws Exception {
-    addAll(jsFunctionInterface);
-
-    addSnippetClassDecl("public interface Buggy extends MyJsFunctionInterface {}");
-
-    assertBuggyFails(
-        "Line 3: 'EntryPoint.Buggy' cannot extend JsFunction 'MyJsFunctionInterface'.");
-  }
-
-  public void testJsFunctionMarkedAsJsTypeFails() throws Exception {
-    addSnippetImport("jsinterop.annotations.JsType");
-    addSnippetImport("jsinterop.annotations.JsFunction");
-    addSnippetClassDecl(
-        "@JsFunction @JsType",
-        "public interface Buggy {",
-        "  void foo();",
-        "}");
-
-    assertBuggyFails(
-        "Line 6: 'EntryPoint.Buggy' cannot be both a JsFunction and a JsType at the same time.");
-  }
-
-  public void testJsFunctionImplementationWithSingleInterfaceSucceeds() throws Exception {
-    addAll(jsFunctionInterface);
-    addSnippetClassDecl(
-        "public static class Buggy implements MyJsFunctionInterface {",
-        "  public int foo(int x) { return 0; }",
-        "}");
-
-    assertBuggySucceeds();
-  }
-
-  public void testJsFunctionImplementationWithMultipleSuperInterfacesFails() throws Exception {
-    addAll(jsFunctionInterface);
-    addSnippetClassDecl(
-        "interface AnotherInterface {}",
-        "public static class Buggy implements MyJsFunctionInterface, AnotherInterface {",
-        "  public int foo(int x) { return 0; }",
-        "  public int bar(int x) { return 0; }",
-        "}");
-
-    assertBuggyFails("Line 4: JsFunction implementation 'EntryPoint.Buggy' cannot "
-        + "implement more than one interface.");
-  }
-
-  public void testJsFunctionImplementationWithSuperClassFails() throws Exception {
-    addAll(jsFunctionInterface);
-    addSnippetClassDecl(
-        "public static class BaseClass {}",
-        "public static class Buggy extends BaseClass implements MyJsFunctionInterface {",
-        "  public int foo(int x) { return 0; }",
-        "}");
-
-    assertBuggyFails("Line 4: JsFunction implementation 'EntryPoint.Buggy' cannot "
-        + "extend a class.");
-  }
-
-  public void testJsFunctionImplementationWithSubclassesFails() throws Exception {
-    addAll(jsFunctionInterface);
-    addSnippetClassDecl(
-        "public static class BaseClass implements MyJsFunctionInterface {",
-        "  public int foo(int x) { return 0; }",
+        "public interface Function {",
+        "  int getFoo();",
+        "  @JsOverlay",
+        "  String s = someString();",
+        "  @JsOverlay",
+        "  default void m() {}",
+        "  @JsOverlay",
+        "  static void n() {}",
         "}",
-        "public static class Buggy extends BaseClass  {",
-        "}");
+        "public static final class Buggy implements Function {",
+        "  public int getFoo() { return 0; }",
+        "  public final void blah() {}",
+        "  public void blat() {}",
+        "  private void bleh() {}",
+        "  static void blet() {",
+        "    new Function() {",
+        "       public int getFoo() { return 0; }",
+        "    }.getFoo();",
+        "  }",
+        "  String x = someString();",
+        "  static int y;",
+        "}",
+        "public static String someString() { return \"hello\"; }");
 
-    assertBuggyFails("Line 6: 'EntryPoint.Buggy' cannot extend "
-        + "JsFunction implementation 'EntryPoint.BaseClass'.");
+    assertBuggySucceeds();
   }
 
-  public void testJsFunctionImplementationMarkedAsJsTypeFails() throws Exception {
-    addAll(jsFunctionInterface);
-    addSnippetImport("jsinterop.annotations.JsType");
-    addSnippetClassDecl(
-        "@JsType",
-        "public static class Buggy implements MyJsFunctionInterface {",
-        "  public int foo(int x) { return 0; }",
-        "}");
-
-    assertBuggyFails(
-        "Line 5: 'EntryPoint.Buggy' cannot be both a JsFunction implementation and a JsType "
-            + "at the same time.");
-  }
-
-  public void testJsFunctionStaticInitializerFails() {
-    addSnippetImport("jsinterop.annotations.JsType");
+  public void testJsFunctionFails() throws Exception {
     addSnippetImport("jsinterop.annotations.JsFunction");
+    addSnippetImport("jsinterop.annotations.JsMethod");
+    addSnippetImport("jsinterop.annotations.JsOverlay");
+    addSnippetImport("jsinterop.annotations.JsProperty");
+    addSnippetImport("jsinterop.annotations.JsType");
     addSnippetClassDecl(
-        "public static String someString() { return \"hello\"; }",
-        "@JsFunction public interface Buggy {",
-        "  static String s = someString();",
-        "  void m();",
+        "@JsFunction",
+        "public interface Function {",
+        "  int getFoo();",
+        "}",
+        "public static final class Buggy implements Function {",
+        "  @JsProperty",
+        "  public int getFoo() { return 0; }",
+        "  @JsMethod",
+        "  private void bleh() {}",
+        "  @JsProperty",
+        "  public int prop = 0;",
+        "  public String toString() { return \"\"; }",
+        "  public boolean equals(Object o) { return false; }",
+        "  public int hashCode() { return 0; }",
+        "}",
+        "@JsFunction",
+        "public interface InvalidFunction {",
+        "  @JsProperty",
+        "  int getFoo();",
+        "  default void m() {}",
+        "  int f = 0;",
+        "  static void n() {}",
+        "}",
+        "static class NonFinalJsFunction implements Function {",
+        "  public int getFoo() { return 0; }",
+        "}",
+        "@JsType",
+        "static final class JsFunctionMarkedAsJsType implements Function {",
+        "  public int getFoo() { return 0; }",
+        "}",
+        "@JsFunction",
+        "interface JsFunctionExtendsInterface extends Cloneable {",
+        "  void foo();",
+        "}",
+        "interface InterfaceExtendsJsFunction extends Function {}",
+        "static class BaseClass { { if (new Object() instanceof Buggy) {} }}",
+        "static final class JsFunctionExtendingBaseClass extends BaseClass implements Function {",
+        "  public int getFoo() { return 0; }",
+        "}",
+        "static final class JsFunctionMultipleInterfaces implements Function, Cloneable {",
+        "  public int getFoo() { return 0; }",
         "}");
 
     assertBuggyFails(
-        "Line 6: JsFunction 'EntryPoint.Buggy' cannot have static initializer.");
+        "Line 14: JsFunction implementation member 'int EntryPoint.Buggy.getFoo()' "
+            + "cannot be JsMethod nor JsProperty.",
+        "Line 16: JsFunction implementation member 'void EntryPoint.Buggy.bleh()' cannot "
+            + "be JsMethod nor JsProperty.",
+        "Line 18: JsFunction implementation member 'int EntryPoint.Buggy.prop' cannot "
+            + "be JsMethod nor JsProperty.",
+        "Line 19: JsFunction implementation 'EntryPoint.Buggy' cannot implement method "
+            + "'String EntryPoint.Buggy.toString()'.",
+        "Line 20: JsFunction implementation 'EntryPoint.Buggy' cannot implement method "
+            + "'boolean EntryPoint.Buggy.equals(Object)'.",
+        "Line 21: JsFunction implementation 'EntryPoint.Buggy' cannot implement method "
+            + "'int EntryPoint.Buggy.hashCode()'.",
+        "Line 26: JsFunction interface member 'int EntryPoint.InvalidFunction.getFoo()' cannot "
+            + "be JsMethod nor JsProperty.",
+        "Line 27: JsFunction interface 'EntryPoint.InvalidFunction' cannot declare non-JsOverlay "
+            + "member 'void EntryPoint.InvalidFunction.m()'.",
+        "Line 28: JsFunction interface 'EntryPoint.InvalidFunction' cannot declare non-JsOverlay "
+            + "member 'int EntryPoint.InvalidFunction.f'.",
+        "Line 29: JsFunction interface 'EntryPoint.InvalidFunction' cannot declare non-JsOverlay "
+            + "member 'void EntryPoint.InvalidFunction.n()'.",
+        "Line 31: JsFunction implementation 'EntryPoint.NonFinalJsFunction' must be final.",
+        "Line 35: 'EntryPoint.JsFunctionMarkedAsJsType' cannot be both a JsFunction implementation "
+            + "and a JsType at the same time.",
+        "Line 39: JsFunction 'EntryPoint.JsFunctionExtendsInterface' cannot extend other"
+            + " interfaces.",
+        "Line 42: 'EntryPoint.InterfaceExtendsJsFunction' cannot extend "
+            + "JsFunction 'EntryPoint.Function'.",
+        "Line 43: Cannot do instanceof against JsFunction implementation "
+            + "'EntryPoint.Buggy'.",
+        "Line 44: JsFunction implementation 'EntryPoint.JsFunctionExtendingBaseClass' cannot "
+            + "extend a class.",
+        "Line 47: JsFunction implementation 'EntryPoint.JsFunctionMultipleInterfaces' cannot "
+            + "implement more than one interface.");
   }
 
-  public void testNativeJsTypeStaticInitializerFails() {
+  public void testNativeJsTypeStaticInitializerSucceeds() throws Exception {
     addSnippetImport("jsinterop.annotations.JsType");
     addSnippetClassDecl(
         "@JsType(isNative=true) public static class Buggy {",
@@ -1251,9 +1394,7 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
         "  static {  Object.class.getName(); }",
         "}");
 
-    assertBuggyFails(
-        "Line 4: Native JsType 'EntryPoint.Buggy' cannot have static initializer.",
-        "Line 7: Native JsType 'EntryPoint.Buggy2' cannot have static initializer.");
+    assertBuggySucceeds();
   }
 
   public void testNativeJsTypeInstanceInitializerFails() {
@@ -1472,7 +1613,7 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
         "Line 6: Native JsType ''EntryPoint.Buggy'' can only extend native JsType interfaces.");
   }
 
-  public void testNativeJsTypeInterfaceDefenderMethodsFails() {
+  public void testNativeJsTypeInterfaceDefaultMethodsFails() {
     addSnippetImport("jsinterop.annotations.JsType");
     addSnippetImport("jsinterop.annotations.JsOverlay");
     addSnippetClassDecl(
@@ -1485,6 +1626,11 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
         "@JsType(isNative=true) public interface Buggy extends Interface {",
         "  default void someMethod(){}",
         "  void someOtherMethod();",
+        "}",
+        "public static class SomeOtherClass implements Interface {",
+        "}",
+        "public static class ClassOverridingOverlayTransitively extends SomeOtherClass {",
+        "  public void someOtherMethod() {}",
         "}");
 
     assertBuggyFails(
@@ -1493,7 +1639,9 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
         "Line 12: Native JsType method 'void EntryPoint.Buggy.someMethod()' should be native "
             + "or abstract.",
         "Line 13: Method 'void EntryPoint.Buggy.someOtherMethod()' cannot override a JsOverlay"
-            + " method 'void EntryPoint.Interface.someOtherMethod()'.");
+            + " method 'void EntryPoint.Interface.someOtherMethod()'.",
+        "Line 18: Method 'void EntryPoint.ClassOverridingOverlayTransitively.someOtherMethod()' "
+            + "cannot override a JsOverlay method 'void EntryPoint.Interface.someOtherMethod()'.");
   }
 
   public void testJsOptionalSucceeds() throws Exception {
@@ -1505,7 +1653,7 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
         "  @JsConstructor public Buggy(@JsOptional Object a) {}",
         "  @JsMethod public void fun(int a, Object b, @JsOptional String c) {}",
         "  @JsMethod public void bar(int a, @JsOptional Object b, @JsOptional String c) {}",
-        "  @JsMethod public void baz(@JsOptional int a, @JsOptional Object b) {}",
+        "  @JsMethod public void baz(@JsOptional String a, @JsOptional Object b) {}",
         "}");
 
     assertBuggySucceeds();
@@ -1523,24 +1671,54 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
     assertBuggySucceeds();
   }
 
+  public void testJsOptionalNotJsOptionalOverrideFails() throws Exception {
+    addSnippetImport("jsinterop.annotations.JsMethod");
+    addSnippetImport("jsinterop.annotations.JsOptional");
+    addSnippetClassDecl(
+        "interface Interface {",
+        "   @JsMethod void m(@JsOptional Object o);",
+        "}",
+        "public static class Buggy implements Interface {",
+        "   @JsMethod public void m(Object o) {}",
+        "}");
+
+    assertBuggyFails("Line 9: Method 'void EntryPoint.Buggy.m(Object)' should declare "
+        + "parameter 'o' as JsOptional");
+  }
+
   public void testJsOptionalNotAtEndFails() throws Exception {
     addSnippetImport("jsinterop.annotations.JsConstructor");
     addSnippetImport("jsinterop.annotations.JsMethod");
     addSnippetImport("jsinterop.annotations.JsOptional");
     addSnippetClassDecl(
         "public static class Buggy {",
-        "   @JsConstructor public Buggy(@JsOptional int a, Object b, @JsOptional String c) {}",
+        "   @JsConstructor public Buggy(@JsOptional String a, Object b, @JsOptional String c) {}",
         "   @JsMethod public void bar(int a, @JsOptional Object b, String c) {}",
         "   @JsMethod public void baz(@JsOptional Object b, String c, Object... os) {}",
         "}");
 
     assertBuggyFails(
-        "Line 7: JsOptional parameter 'b' in method 'EntryPoint.Buggy.EntryPoint$Buggy(int, "
+        "Line 7: JsOptional parameter 'b' in method 'EntryPoint.Buggy.EntryPoint$Buggy(String, "
             + "Object, String)' cannot precede parameters that are not optional.",
         "Line 8: JsOptional parameter 'c' in method 'void EntryPoint.Buggy.bar(int, Object,"
             + " String)' cannot precede parameters that are not optional.",
         "Line 9: JsOptional parameter 'c' in method 'void EntryPoint.Buggy.baz(Object, String, "
             + "Object[])' cannot precede parameters that are not optional.");
+  }
+
+  public void testJsOptionalOnPrimitiveTypedParametersFails() throws Exception {
+    addSnippetImport("jsinterop.annotations.JsMethod");
+    addSnippetImport("jsinterop.annotations.JsOptional");
+    addSnippetClassDecl(
+        "public static class Buggy {",
+        "  @JsMethod public void m(@JsOptional int i, @JsOptional byte b) {}",
+        "}");
+
+    assertBuggyFails(
+        "Line 6: JsOptional parameter 'b' in method 'void EntryPoint.Buggy.m(int, byte)' cannot be "
+            + "of primitive type.",
+        "Line 6: JsOptional parameter 'i' in method 'void EntryPoint.Buggy.m(int, byte)' cannot be "
+            + "of primitive type.");
   }
 
   public void testJsOptionalOnNonJsExposedMethodsFails() throws Exception {
@@ -1589,11 +1767,22 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
     addSnippetImport("jsinterop.annotations.JsType");
     addSnippetImport("jsinterop.annotations.JsOverlay");
     addSnippetClassDecl(
+        "@JsType(isNative=true) public static final class FinalType {",
+        "  @JsOverlay public void n() { }",
+        "}",
+        "@JsType(isNative=true) public interface NativeInterface {",
+        "  @JsOverlay public static Object object = new Object();",
+        "  @JsOverlay public static final Object other = new Object();",
+        "  @JsOverlay public Object another = new Object();",
+        "  @JsOverlay public final Object yetAnother = new Object();",
+        "}",
         "@JsType(isNative=true) public static class Buggy {",
         "  @JsOverlay public static Object object = new Object();",
+        "  @JsOverlay public static final Object other = new Object();",
         "  @JsOverlay public static void m() { }",
         "  @JsOverlay public static void m(int x) { }",
         "  @JsOverlay private static void m(boolean x) { }",
+        "  @JsOverlay private void m(String x) { }",
         "  @JsOverlay public final void n() { }",
         "  @JsOverlay public final void n(int x) { }",
         "  @JsOverlay private final void n(boolean x) { }",
@@ -1740,8 +1929,10 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
         "}");
 
     assertBuggyFails(
-        "Line 6: JsOverlay 'int EntryPoint.Buggy.f' can only be declared in a native type.",
-        "Line 7: JsOverlay 'void EntryPoint.Buggy.m()' can only be declared in a native type.");
+        "Line 6: JsOverlay 'int EntryPoint.Buggy.f' can only be declared in a native type "
+            + "or a JsFunction interface.",
+        "Line 7: JsOverlay 'void EntryPoint.Buggy.m()' can only be declared in a native type "
+            + "or a JsFunction interface.");
   }
 
   public void testJsTypeExtendsNativeJsTypeSucceeds() throws Exception {
@@ -1813,11 +2004,31 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
 
   public void testNativeJsTypeExtendsNaiveJsTypeSucceeds() throws Exception {
     addSnippetImport("jsinterop.annotations.JsType");
+    addSnippetImport("jsinterop.annotations.JsMethod");
     addSnippetClassDecl(
-        "@JsType(isNative=true) public static class Super {",
+        "@JsType(isNative=true) static class Super {",
+        "  public native int hashCode();",
         "}",
-        "@JsType(isNative=true) public static class Buggy extends Super {",
-        "}");
+        "@JsType(isNative=true) interface HasHashCode {",
+        "  int hashCode();",
+        "}",
+        "@JsType(isNative=true) static class Buggy extends Super {",
+        "  public native String toString();",
+        "  public native boolean equals(Object obj);",
+        "}",
+        "@JsType(isNative=true) static class OtherBuggy implements HasHashCode {",
+        "  public native String toString();",
+        "  public native boolean equals(Object obj);",
+        "  public native int hashCode();",
+        "}" ,
+        "@JsType(isNative=true) static class NativeType {}",
+        "interface A { int hashCode(); }",
+        "static class SomeClass extends NativeType implements A {",
+        "  public int hashCode() { return 0; }",
+        "}",
+        "@JsType(isNative=true) interface NativeInterface {}",
+        "static class B { @JsMethod(name=\"something\") public int hashCode() { return 0; } }",
+        "static class SomeClass3 extends B implements NativeInterface {}");
 
     assertBuggySucceeds();
   }
@@ -1825,26 +2036,87 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
   public void testNativeJsTypeBadMembersFails() {
     addSnippetImport("jsinterop.annotations.JsType");
     addSnippetImport("jsinterop.annotations.JsIgnore");
+    addSnippetImport("jsinterop.annotations.JsMethod");
     addSnippetClassDecl(
+        "@JsType(isNative=true) interface Interface {",
+        "  @JsIgnore public void n();",
+        "}",
         "@JsType(isNative=true) static class Buggy {",
         "  public static final int s = 42;",
-        "  public int f = 42;",
+        "  public static int t = 42;",
+        "  public final int f = 42;",
+        "  public int g = 42;",
         "  @JsIgnore public Buggy() { }",
         "  @JsIgnore public int x;",
         "  @JsIgnore public native void n();",
         "  public void o() {}",
         "  public native void p() /*-{}-*/;",
+        "}",
+        "@JsType(isNative=true) static class NativeType {}",
+        "interface A { @JsMethod(name=\"something\") int hashCode(); }",
+        "static class SomeClass extends NativeType implements A {",
+        "  public int hashCode() { return 0; }",
+        "}",
+        "interface B { int hashCode(); }",
+        "static class SomeClass2 extends NativeType implements B {",
+        "}",
+        "@JsType(isNative=true) static class NativeTypeWithHashCode {",
+        "  public native int hashCode();",
+        "}",
+        "static class SomeClass3 extends NativeTypeWithHashCode implements A {}");
+
+    assertBuggyFails(
+        "Line 7: Native JsType member 'void EntryPoint.Interface.n()' cannot have @JsIgnore.",
+        "Line 9: Native JsType 'EntryPoint.Buggy' cannot have initializer.",
+        "Line 10: Native JsType field 'int EntryPoint.Buggy.s' cannot be final.",
+        "Line 11: Native JsType field 'int EntryPoint.Buggy.t' cannot have initializer.",
+        "Line 12: Native JsType field 'int EntryPoint.Buggy.f' cannot be final.",
+        "Line 13: Native JsType field 'int EntryPoint.Buggy.g' cannot have initializer.",
+        "Line 14: Native JsType member 'EntryPoint.Buggy.EntryPoint$Buggy()' "
+            + "cannot have @JsIgnore.",
+        "Line 15: Native JsType member 'int EntryPoint.Buggy.x' cannot have @JsIgnore.",
+        "Line 16: Native JsType member 'void EntryPoint.Buggy.n()' cannot have @JsIgnore.",
+        "Line 17: Native JsType method 'void EntryPoint.Buggy.o()' should be native or abstract.",
+        "Line 18: JSNI method 'void EntryPoint.Buggy.p()' is not allowed in a native JsType.",
+        "Line 23: 'int EntryPoint.SomeClass.hashCode()' cannot be assigned a different JavaScript"
+            + " name than the method it overrides.",
+        "Line 26: Native JsType subclass 'EntryPoint.SomeClass2' can not implement interface "
+            + "'EntryPoint.B' that declares method 'hashCode' inherited from java.lang.Object.",
+        "Line 29: 'int EntryPoint.NativeTypeWithHashCode.hashCode()' "
+            + "(exposed by 'EntryPoint.SomeClass3') cannot be assigned a different JavaScript name"
+            + " than the method it overrides.");
+  }
+
+  public void testSubclassOfNativeJsTypeBadMembersFails() {
+    addSnippetImport("jsinterop.annotations.JsType");
+    addSnippetImport("jsinterop.annotations.JsIgnore");
+    addSnippetImport("jsinterop.annotations.JsMethod");
+    addSnippetClassDecl(
+        "@JsType(isNative=true) static class NativeType {",
+        "  @JsMethod(name =\"string\")",
+        "  public native String toString();",
+        "}",
+        "static class Buggy extends NativeType {",
+        "  public String toString() { return super.toString(); }",
+        "  @JsMethod(name = \"blah\")",
+        "  public int hashCode() { return super.hashCode(); }",
+        "}",
+        "static class SubBuggy extends Buggy {",
+        "  public boolean equals(Object obj) { return super.equals(obj); }",
         "}");
 
     assertBuggyFails(
-        "Line 5: Native JsType 'EntryPoint.Buggy' cannot have initializer.",
-        "Line 6: Native JsType field 'int EntryPoint.Buggy.s' cannot have initializer.",
-        "Line 7: Native JsType field 'int EntryPoint.Buggy.f' cannot have initializer.",
-        "Line 8: Native JsType member 'EntryPoint.Buggy.EntryPoint$Buggy()' cannot have @JsIgnore.",
-        "Line 9: Native JsType member 'int EntryPoint.Buggy.x' cannot have @JsIgnore.",
-        "Line 10: Native JsType member 'void EntryPoint.Buggy.n()' cannot have @JsIgnore.",
-        "Line 11: Native JsType method 'void EntryPoint.Buggy.o()' should be native or abstract.",
-        "Line 12: JSNI method 'void EntryPoint.Buggy.p()' is not allowed in a native JsType.");
+       "Line 8: Method 'String EntryPoint.NativeType.toString()' cannot override a method "
+           + "from 'java.lang.Object' and change its name." ,
+        "Line 11: Cannot use super to call 'EntryPoint.NativeType.toString'. 'java.lang.Object' "
+            + "methods in native JsTypes cannot be called using super.",
+        "Line 13: 'int EntryPoint.Buggy.hashCode()' cannot be assigned a different JavaScript "
+            + "name than the method it overrides.",
+        "Line 13: Cannot use super to call 'EntryPoint.NativeType.hashCode'. "
+            + "'java.lang.Object' methods in native JsTypes cannot be called using super.",
+        "Line 16: Cannot use super to call 'EntryPoint.NativeType.equals'. 'java.lang.Object' "
+            + "methods in native JsTypes cannot be called using super."
+    );
   }
 
   public void testNativeMethodOnJsTypeSucceeds() throws Exception {
@@ -1859,6 +2131,7 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
   }
 
   public void testNativeJsTypeSucceeds() throws Exception {
+    addSnippetImport("jsinterop.annotations.JsMethod");
     addSnippetImport("jsinterop.annotations.JsType");
     addSnippetClassDecl(
         "@JsType(isNative=true) abstract static class Buggy {",
@@ -1874,6 +2147,19 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
         "  public abstract void o();",
         "  protected abstract void o(Object o);",
         "  abstract void o(String o);",
+        "}",
+        "@JsType(isNative=true) abstract static class NativeClass {",
+        "  public native String toString();",
+        "  public abstract int hashCode();",
+        "}",
+        "static class NativeSubclass extends NativeClass {",
+        "  public String toString() { return null; }",
+        "  @JsMethod",
+        "  public boolean equals(Object obj) { return false; }",
+        "  public int hashCode() { return 0; }",
+        "}",
+        "static class SubNativeSubclass extends NativeSubclass {",
+        "  public boolean equals(Object obj) { return super.equals(obj); }",
         "}");
 
     assertBuggySucceeds();
@@ -1911,8 +2197,23 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
         "  public native void m(Object o);",
         "  public native void m(Object[] o);",
         "}",
-        "@JsType public static class Buggy extends Super {",
+        "public static class Buggy extends Super {",
         "  public void n(Object o) { }",
+        "}");
+
+    assertBuggySucceeds();
+  }
+
+  public void testClassesExtendingNativeJsTypeInterfaceWithOverlaySucceeds() throws Exception {
+    addSnippetImport("jsinterop.annotations.JsOverlay");
+    addSnippetImport("jsinterop.annotations.JsType");
+    addSnippetClassDecl(
+        "@JsType(isNative=true) interface Super {",
+        "  @JsOverlay default void fun() {}",
+        "}",
+        "@JsType(isNative=true) abstract static class Buggy implements Super {",
+        "}",
+        "static class JavaSubclass implements Super {",
         "}");
 
     assertBuggySucceeds();
@@ -2144,7 +2445,9 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
             + "is not usable by but exposed to JavaScript.",
         "Line 24: [unusable-by-js] Type of parameter 'a' in "
             + "'EntryPoint.B EntryPoint.Buggy.f4(EntryPoint.B)' is not usable by but "
-            + "exposed to JavaScript.");
+            + "exposed to JavaScript.",
+        "Suppress \"[unusable-by-js]\" warnings by adding a `@SuppressWarnings(\"unusable-by-js\")`"
+            + " annotation to the corresponding member.");
   }
 
   public void testUnusableByJsAccidentalOverrideSuppressionWarns()
@@ -2164,7 +2467,9 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
     assertBuggySucceeds(
         "Line 10: [unusable-by-js] Type of parameter 'x' in "
             + "'void EntryPoint.Parent.doIt(Class)' (exposed by 'EntryPoint.Buggy') is not usable "
-            + "by but exposed to JavaScript.");
+            + "by but exposed to JavaScript.",
+        "Suppress \"[unusable-by-js]\" warnings by adding a `@SuppressWarnings(\"unusable-by-js\")`"
+            + " annotation to the corresponding member.");
   }
 
   private static final MockJavaResource jsFunctionInterface = new MockJavaResource(
@@ -2183,23 +2488,13 @@ public class JsInteropRestrictionCheckerTest extends OptimizerTestBase {
 
   public final void assertBuggySucceeds(String... expectedWarnings)
       throws Exception {
-    List<String> allWarnings = Lists.newArrayList();
-    if (expectedWarnings.length > 0) {
-      allWarnings.add("Warnings in test/EntryPoint.java");
-      allWarnings.addAll(Arrays.asList(expectedWarnings));
-    }
-    Result result = assertCompileSucceeds("Buggy buggy = null;",
-        allWarnings.toArray(new String[0]));
+    Result result = assertCompileSucceeds("Buggy buggy = null;", expectedWarnings);
     assertNotNull(result.findClass("test.EntryPoint$Buggy"));
   }
 
   public final void assertBuggyFails(String... expectedErrors) {
     assertTrue(expectedErrors.length > 0);
-
-    List<String> allErrors = Lists.newArrayList();
-    allErrors.add("Errors in test/EntryPoint.java");
-    allErrors.addAll(Arrays.asList(expectedErrors));
-    assertCompileFails("Buggy buggy = null;", allErrors.toArray(new String[0]));
+    assertCompileFails("Buggy buggy = null;", expectedErrors);
   }
 
   @Override

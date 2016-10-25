@@ -25,7 +25,7 @@ package(
     ],
 )
 
-subinclude("//third_party/java_src/gwt:build-macros")
+load("//third_party/java_src/gwt:build-macros.bzl", "AugmentedJar", "GwtTestSuites", "Zip")
 
 # This target logically corresponds to gwt-dev.jar but doesn't
 # actually create it, for faster builds after a compiler change.
@@ -62,6 +62,7 @@ java_library(
         "core/src/com/google/gwt/dev/util/Name.java",
         "core/src/com/google/gwt/dev/util/StringKey.java",
     ],
+    compatible_with = ["//buildenv/target:appengine"],
 )
 
 # Dependencies of gwt-servlet.jar. (Included in server run-time classpaths.)
@@ -78,9 +79,9 @@ java_library(
         exclude = [
             "**/junit/**",
             "**/super/**",
-            "**/package-info.java",
         ],
     ),
+    compatible_with = ["//buildenv/target:appengine"],
     deps = [
         # GWTBridge & UnsafeNativeLong
         ":compiler.standalone.super",
@@ -93,11 +94,10 @@ AugmentedJar(
     name = "gwt-dev-deps",
     srcs = [],
     added_jars = [
-        "//third_party/java_src/gwt/legacy:libdev-bare.jar",
-        "//third_party/java_src/gwt/legacy:dev-resources.jar",
         "//third_party/java_src/gwt/svn/tools:dev_jars",
         "//third_party/java_src/gwt/svn/tools:legacy_dev_jars",
     ],
+    compatible_with = ["//buildenv/target:appengine"],
     constraints = [],
     dojarjar = 1,
     wrap_javalibrary = 0,
@@ -115,6 +115,7 @@ AugmentedJar(
         ":libcompiler.standalone.super.jar",
         ":super-resources.jar",
     ],
+    compatible_with = ["//buildenv/target:appengine"],
     constraints = [],
     dojarjar = 1,
     resources = ["//tools/gwt:gwt_google_defaults"],
@@ -125,12 +126,11 @@ AugmentedJar(
 # They must be jarjar-ed and dependencies stripped before exposing to google3.
 java_library(
     name = "gwt-dev-bare",
-    srcs = glob(
-        ["core/src/**/*.java"],
-        exclude = ["**/package-info.java"],
-    ),
+    srcs = glob(["core/src/**/*.java"]),
+    compatible_with = ["//buildenv/target:appengine"],
     deps = [
         ":compiler.standalone.super",
+        "//third_party/java/gson",
         "//third_party/java_src/gwt/svn/tools:dev_deps",
         "//third_party/java_src/gwt/svn/tools:servlet_api_3",
     ],
@@ -155,11 +155,8 @@ Zip(
             "core/src/**/*.txt",
             "core/src/com/google/gwt/dev/js/globals/globals.html",  # for testing
         ],
-        exclude = [
-            "**/package-info.java",
-            "README.txt",
-        ],
     ),
+    compatible_with = ["//buildenv/target:appengine"],
     root = "core/src",
 )
 
@@ -200,8 +197,10 @@ java_library(
             "**/testing/**",
         ],
     ),
+    compatible_with = ["//buildenv/target:appengine"],
     deps = [
         ":compiler.standalone.super",
+        "//third_party/java/gson",
         "//third_party/java_src/gwt/svn/tools:compiler_deps",
     ],
 )
@@ -215,10 +214,12 @@ java_library(
         ["core/super/**/*.java"],
         exclude = [
             "core/super/com/google/gwt/dev/jjs/intrinsic/**",
-            "**/package-info.java",
         ],
     ),
-    compatible_with = ["//buildenv/target:android"],
+    compatible_with = [
+        "//buildenv/target:android",
+        "//buildenv/target:appengine",
+    ],
     constraints = ["android"],
 )
 
@@ -230,8 +231,8 @@ Zip(
             "core/super/**/*.java",
             "core/super/**/*.xml",
         ],
-        exclude = ["**/package-info.java"],
     ),
+    compatible_with = ["//buildenv/target:appengine"],
     root = "core/super",
 )
 
@@ -248,21 +249,10 @@ java_library(
         "core/super/com/google/gwt/core/client/GwtScriptOnly.java",
         "core/super/com/google/gwt/core/client/UnsafeNativeLong.java",
     ],
-    compatible_with = ["//buildenv/target:android"],
-    constraints = [
-        "android",
+    compatible_with = [
+        "//buildenv/target:android",
+        "//buildenv/target:appengine",
     ],
-)
-
-# A minimal library for a subset of the internal annotations for the
-# GWT compiler.
-java_library(
-    name = "gwt-dev-internal-annotations",
-    srcs = [
-        "core/super/javaemul/internal/annotations/CompilerHint.java",
-        "core/super/javaemul/internal/annotations/DoNotInline.java",
-    ],
-    compatible_with = ["//buildenv/target:android"],
     constraints = [
         "android",
     ],
@@ -300,9 +290,14 @@ java_library(
     srcs = glob([
         "core/test/**/*.java",
     ]),
+    javacopts = [
+        "-Xep:SelfComparison:OFF",
+        "-Xep:SelfEquals:OFF",
+    ],
     deps = [
         ":compiler.standalone.super",
         ":gwt-dev-bare",
+        "//third_party/java/gson",
         "//third_party/java/junit",
         "//third_party/java_src/gwt/svn/tools:dev_deps",
     ],

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Google Inc.
+ * Copyright 2016 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,29 +13,17 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.gwt.sample.mobilewebapp.server.domain;
+package com.google.gwt.emultest.java8.util;
 
-import com.googlecode.objectify.ObjectifyService;
-import com.googlecode.objectify.util.DAOBase;
+import java.util.List;
+import java.util.Vector;
 
 /**
- * Factory for creating EntityManager.
+ * Java 8 methods to test in java.util.Vector.
  */
-public final class EMF extends DAOBase {
-
-  private static EMF singleton;
-
-  static {
-    ObjectifyService.register(Task.class);
-  }
-
-  public static EMF get() {
-    if (singleton == null) {
-      singleton = new EMF();
-    }
-    return singleton;
-  }
-
-  protected EMF() {
+public class VectorTest extends AbstractJava8ListTest {
+  @Override
+  protected List<String> createEmptyList() {
+    return new Vector<>();
   }
 }

@@ -21,6 +21,8 @@ import com.google.gwt.dev.jjs.test.StaticObject.NoArgObject;
 import com.google.gwt.dev.jjs.test.StaticObject.NoInitObject;
 import com.google.gwt.dev.jjs.test.StaticObject.StaticInnerObject;
 import com.google.gwt.dev.jjs.test.StaticObject.StaticObjectException;
+import com.google.gwt.junit.DoNotRunWith;
+import com.google.gwt.junit.Platform;
 import com.google.gwt.junit.client.GWTTestCase;
 
 /**
@@ -187,6 +189,22 @@ public class JsniConstructorTest extends GWTTestCase {
     InstanceObject i2 = passAndReturnInstance(o2, 1);
     assertEquals(o2.foo() + 1, i2.foo());
   }
+
+  // Devirtualized constructors not supported in now deprecated devmode.
+  @DoNotRunWith(Platform.Devel)
+  public native void testJsniDevirtualizedConstructors() /*-{
+    var aDoubleConstructor = @java.lang.Double::new(Ljava/lang/String;);
+    @junit.framework.Assert::assertEquals(DDD)(1.5,  aDoubleConstructor("1.5"), 0.1);
+    @junit.framework.Assert::assertEquals(DDD)(1.5,
+        @java.lang.Double::new(Ljava/lang/String;)("1.5"), 0.1);
+
+    var aStringConstructor = @java.lang.String::new(Ljava/lang/String;);
+    @junit.framework.Assert::assertEquals(Ljava/lang/String;Ljava/lang/String;)(
+        "Hello", aStringConstructor("Hello"))
+    @junit.framework.Assert::assertEquals(Ljava/lang/String;Ljava/lang/String;)(
+        "Hello", @java.lang.String::new(Ljava/lang/String;)("Hello"))
+
+  }-*/;
 
   private native InstanceObject instanceArg(StaticObject obj, int i) /*-{
     return @com.google.gwt.dev.jjs.test.StaticObject.InstanceObject::new(Lcom/google/gwt/dev/jjs/test/StaticObject;I)(obj,i);

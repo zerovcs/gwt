@@ -26,6 +26,8 @@ import java.util.List;
 
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsOverlay;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
@@ -1123,6 +1125,46 @@ public class Java8Test extends GWTTestCase {
     assertEquals("IRight.m()", new B().m());
   }
 
+  static class DefaultTrumpsOverSyntheticAbstractStub {
+    interface SuperInterface {
+      String m();
+    }
+
+    interface SubInterface extends SuperInterface {
+      default String m() {
+        return "SubInterface.m()";
+      }
+    }
+  }
+
+  public void testMultipleDefaults_defaultShadowsOverSyntheticAbstractStub() {
+    abstract class A implements DefaultTrumpsOverSyntheticAbstractStub.SuperInterface { }
+    class B extends A implements DefaultTrumpsOverSyntheticAbstractStub.SubInterface { }
+
+    assertEquals("SubInterface.m()", new B().m());
+  }
+
+  static class DefaultTrumpsOverDefaultOnSuperAbstract {
+    interface SuperInterface {
+      default String m() {
+        return "SuperInterface.m()";
+      }
+    }
+
+    interface SubInterface extends SuperInterface {
+      default String m() {
+        return "SubInterface.m()";
+      }
+    }
+  }
+
+  public void testMultipleDefaults_defaultShadowsOverDefaultOnSuperAbstract() {
+    abstract class A implements DefaultTrumpsOverDefaultOnSuperAbstract.SuperInterface { }
+    class B extends A implements DefaultTrumpsOverDefaultOnSuperAbstract.SubInterface { }
+
+    assertEquals("SubInterface.m()", new B().m());
+  }
+
   interface InterfaceWithThisReference {
     default String n() {
       return "default n";
@@ -1274,10 +1316,20 @@ public class Java8Test extends GWTTestCase {
       return true;
     }
   }
+  private static <T> String getClassName(T obj) {
+    return obj.getClass().getSimpleName();
+  }
 
   public void testMethodReference_generics() {
     P<B> p = B::getTrue;
     assertTrue(p.apply(new B()));
+    // The next two method references must result in two different lambda implementations due
+    // to generics, see bug # 9333.
+    MyFunction1<B, String> f1 = Java8Test::getClassName;
+    MyFunction1<Double, String> f2 = Java8Test::getClassName;
+
+    assertEquals(B.class.getSimpleName(), f1.apply(new B()));
+    assertEquals(Double.class.getSimpleName(), f2.apply(new Double(2)));
   }
 
   public void testDefaultMethod_staticInitializer() {
@@ -1372,13 +1424,284 @@ public class Java8Test extends GWTTestCase {
     assertSame("a", function.f(0, pars));
   }
 
-  @FunctionalInterface
-  interface ToString {
-    String apply(StringBuilder t);
+  private static <T> T m(T s) {
+    return s;
   }
 
-  public void testMethodReferenceImplementedInSuperclass() {
-    ToString toString = StringBuilder::toString;
+  static class Some<T> {
+    T s;
+    MyFunction2<T, T ,T> combine;
+    Some(T s, MyFunction2<T, T, T>  combine) {
+      this.s = s;
+      this.combine = combine;
+    }
+    public T m(T s2) {
+      return combine.apply(s, s2);
+    }
+    public T m1() {
+      return s;
+    }
+  }
+
+  @FunctionalInterface
+  interface MyFunction1<T, U> {
+    U apply(T t);
+  }
+
+  @FunctionalInterface
+  interface MyFunction2<T, U, V> {
+    V apply(T t, U u);
+  }
+
+  public void testMethodReference_implementedInSuperclass() {
+    MyFunction1<StringBuilder, String> toString = StringBuilder::toString;
     assertEquals("Hello", toString.apply(new StringBuilder("Hello")));
   }
+
+  static MyFunction2<String, String, String> concat = (s,t) -> s + t;
+
+  public void testMethodReference_genericTypeParameters() {
+    testMethodReference_genericTypeParameters(
+        new Some<String>("Hell", concat), "Hell", "o", concat);
+  }
+
+  private static <T> void testMethodReference_genericTypeParameters(
+      Some<T> some, T t1, T t2, MyFunction2<T, T, T> combine) {
+    T t1t2 = combine.apply(t1, t2);
+
+    // Test all 4 flavours of methodReference
+    // 1. Static method
+    assertEquals(t1t2, ((MyFunction1<T, T>) Java8Test::m).apply(t1t2));
+    // 2. Qualified instance method
+    assertEquals(t1t2, ((MyFunction1<T, T>) some::m).apply(t2));
+    // 3. Unqualified instance method
+    assertEquals(t1, ((MyFunction1<Some<T>, T>) Some<T>::m1).apply(some));
+    assertEquals("Hello",
+        ((MyFunction1<Some<String>, String>)
+              Some<String>::m1).apply(new Some<>("Hello", concat)));
+    // 4. Constructor reference.
+    assertEquals(t1t2,
+        ((MyFunction2<T, MyFunction2<T, T, T>, Some<T>>) Some<T>::new).apply(t1t2, combine).m1());
+  }
+
+  static MyFunction2<Integer, Integer, Integer> addInteger = (s,t) -> s + t;
+
+  @FunctionalInterface
+  interface MyIntFunction1 {
+    int apply(int t);
+  }
+
+  @FunctionalInterface
+  interface MyIntFunction2 {
+    int apply(int t, int u);
+  }
+
+  @FunctionalInterface
+  interface MyIntFuncToSomeIntegeFunction2 {
+    SomeInteger apply(int t, MyFunction2<Integer, Integer, Integer> u);
+  }
+
+  @FunctionalInterface
+  interface MySomeIntegerFunction1 {
+    int apply(SomeInteger t);
+  }
+
+  @FunctionalInterface
+  interface MySomeIntegerIntFunction2 {
+    int apply(SomeInteger t, int u);
+  }
+
+  static MyIntFunction2 addint = (s,t) -> s + t;
+
+  static class SomeInteger {
+    int s;
+    MyFunction2<Integer, Integer ,Integer> combine;
+    SomeInteger(int s, MyFunction2<Integer, Integer, Integer>  combine) {
+      this.s = s;
+      this.combine = combine;
+    }
+    public int m(int s2) {
+      return combine.apply(s, s2);
+    }
+    public int m1() {
+      return s;
+    }
+  }
+
+  public void testMethodReference_autoboxing() {
+    SomeInteger some = new SomeInteger(3, addInteger);
+
+    // Test all 4 flavours of methodReference autoboxing parameters.
+    // 1. Static method
+    assertEquals((Integer) 5, ((MyFunction1<Integer, Integer>) Java8Test::m).apply(5));
+    // 2. Qualified instance method
+    assertEquals((Integer) 5, ((MyFunction1<Integer, Integer>) some::m).apply(2));
+    // 3. Unqualified instance method
+    assertEquals((Integer) 3, ((MyFunction1<SomeInteger, Integer>) SomeInteger::m1).apply(some));
+    assertEquals((Integer) 5, ((MyFunction2<SomeInteger, Integer, Integer>)
+        SomeInteger::m).apply(some, 2));
+    assertEquals((Integer) 5,
+        ((MyFunction1<SomeInteger, Integer>)
+            SomeInteger::m1).apply(new SomeInteger(5, addInteger)));
+    // 4. Constructor reference.
+    assertEquals(5,
+        ((MyFunction2<Integer, MyFunction2<Integer, Integer, Integer>, SomeInteger>)
+            SomeInteger::new).apply(5, addInteger).m1());
+
+    // Test all 4 flavours of methodReference (interface unboxed)
+    // 1. Static method
+    assertEquals(5, ((MyIntFunction1) Java8Test::m).apply(5));
+    // 2. Qualified instance method
+    assertEquals(5, ((MyIntFunction1) some::m).apply(2));
+    // 3. Unqualified instance method
+    assertEquals(3, ((MySomeIntegerFunction1) SomeInteger::m1).apply(some));
+    // The next expression was the one that triggered bug #9346 where decisions on whether to
+    // box/unbox were decided incorrectly due to differring number of parameters in the method
+    // reference and the functional interface method.
+    assertEquals(5, ((MySomeIntegerIntFunction2) SomeInteger::m).apply(some, 2));
+    assertEquals(5,
+        ((MySomeIntegerFunction1)
+            SomeInteger::m1).apply(new SomeInteger(5, addInteger)));
+    // 4. Constructor reference.
+    assertEquals(5,
+        ((MyIntFuncToSomeIntegeFunction2) SomeInteger::new).apply(5, addInteger).m1());
+  }
+
+  @JsType(isNative = true)
+  private static class NativeClassWithJsOverlay {
+    @JsOverlay
+    public static String m(String s) {
+      MyFunction1<String, String> id = (a) -> a;
+      return id.apply(s);
+    }
+  }
+  public void testNativeJsOverlay_lambda() {
+    assertSame("Hello", NativeClassWithJsOverlay.m("Hello"));
+  }
+
+  interface IntefaceWithDefaultMethodAndLambda {
+    boolean f();
+
+    default BooleanPredicate fAsPredicate() {
+      // This lambda will be defined as an instance method in the enclosing class, which is an
+      // interface. In this case the methdod will be devirtualized.
+      return () -> this.f();
+    }
+  }
+
+  interface BooleanPredicate {
+    boolean apply();
+  }
+
+  public void testLambdaCapturingThis_onDefaultMethod() {
+    assertTrue(
+        new IntefaceWithDefaultMethodAndLambda() {
+          @Override
+          public boolean f() {
+            return true;
+          }
+        }.fAsPredicate().apply());
+  }
+
+  @JsFunction
+  interface JsFunctionInterface {
+    Double m();
+    @JsOverlay
+    default Double callM() {
+      return this.m();
+    }
+  }
+
+  private static native JsFunctionInterface createNative() /*-{
+    return function () { return 5; };
+  }-*/;
+  public void testJsFunction_withOverlay() {
+    JsFunctionInterface f = new JsFunctionInterface() {
+      @Override
+      public Double m() {
+        return new Double(2.0);
+      }
+    };
+    assertEquals(2, f.callM().intValue());
+    assertEquals(5, createNative().callM().intValue());
+  }
+
+  interface FunctionalExpressionBridges_I<T> {
+    T apply(T t);
+    // TODO(rluble): uncomment the line below to when bridges for default methods are created
+    // in functional expressions
+    FunctionalExpressionBridges_I<T> m(T t);
+  }
+
+  @FunctionalInterface
+  interface FunctionalExpressionBridges_J<T extends Comparable>
+      extends FunctionalExpressionBridges_I<T> {
+    T apply(T t);
+
+    // Overrides I.m() and specializes return type
+    default FunctionalExpressionBridges_J<T> m(T t) {
+      return this;
+    }
+  }
+
+  public static String identity(String s) {
+    return s;
+  }
+
+  public void testFunctionalExpressionBridges() {
+    FunctionalExpressionBridges_J<String> ann = new FunctionalExpressionBridges_J<String>() {
+      @Override
+      public String apply(String string) {
+        return string;
+      }
+    };
+
+    assertBrigdeDispatchIsCorrect(ann);
+    assertBrigdeDispatchIsCorrect((String s) -> s + "");
+    assertBrigdeDispatchIsCorrect(Java8Test::identity);
+  }
+
+  private void assertBrigdeDispatchIsCorrect(
+      FunctionalExpressionBridges_J<String> functionalExpression) {
+    assertEquals("Hello", functionalExpression.m(null).apply("Hello"));
+    assertEquals("Hello", functionalExpression.apply("Hello"));
+    assertEquals("Hello",
+        ((FunctionalExpressionBridges_I<String>) functionalExpression).apply("Hello"));
+  }
+
+  static class ClassWithAVeryLoooooooooooooooooooooooooooooooooooongName {
+    public static String m() {
+      return null;
+    }
+  }
+
+  // Regression test for bug: #9426.
+  public void testCorrectNaming() {
+    Function<String> f = ClassWithAVeryLoooooooooooooooooooooooooooooooooooongName::m;
+    assertNotNull(f);
+  }
+
+  @JsType(isNative = true)
+  interface InterfaceWithOverlay {
+
+    @JsProperty
+    int getLength();
+
+    @JsOverlay
+    default int len() {
+      return this.getLength();
+    }
+  }
+
+  @JsType(isNative = true, name = "Object", namespace = JsPackage.GLOBAL)
+  static abstract class SubclassImplementingInterfaceWithOverlay implements InterfaceWithOverlay {
+  }
+
+  // Regression test for bug: #9440
+  public void testInterfaceWithOverlayAndNativeSubclass() {
+    SubclassImplementingInterfaceWithOverlay object =
+        (SubclassImplementingInterfaceWithOverlay) (Object) new int[]{1, 2, 3};
+    assertEquals(3, object.len());
+  }
 }
+

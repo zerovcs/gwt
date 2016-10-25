@@ -346,7 +346,8 @@ public class DeadCodeEliminationTest extends OptimizerTestBase {
     optimize("char", "return s.charAt(1);").intoString("return EntryPoint.s.charAt(1);");
 
     // String.toString
-    optimize("String", "return s.toString();").intoString("return EntryPoint.s;");
+    optimize("String", "return \"a\".toString();").intoString("return \"a\";");
+    optimize("String", "return s.toString();").intoString("return EntryPoint.s.toString();");
     optimize("String", "return o.toString();").intoString("return EntryPoint.o.toString();");
 
     // String.hashCode: never optimized
@@ -382,6 +383,8 @@ public class DeadCodeEliminationTest extends OptimizerTestBase {
     // is printed as a double with the right precision.
     optimize("float", "return 1.1f;").intoString("return " + String.format("%.16g", (double) 1.1f) +
         ";");
+    optimize("boolean", "return 2d > 1;").intoString("return true;");
+    optimize("boolean", "return 1 < 2d;").intoString("return true;");
   }
 
   public void testMultiExpression_RedundantClinitRemoval() throws Exception {

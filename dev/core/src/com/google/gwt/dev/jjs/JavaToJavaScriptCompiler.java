@@ -105,6 +105,7 @@ import com.google.gwt.dev.jjs.impl.Pruner;
 import com.google.gwt.dev.jjs.impl.RecordRebinds;
 import com.google.gwt.dev.jjs.impl.RemoveEmptySuperCalls;
 import com.google.gwt.dev.jjs.impl.RemoveSpecializations;
+import com.google.gwt.dev.jjs.impl.ReplaceCallsToNativeJavaLangObjectOverrides;
 import com.google.gwt.dev.jjs.impl.ReplaceDefenderMethodReferences;
 import com.google.gwt.dev.jjs.impl.ReplaceGetClassOverrides;
 import com.google.gwt.dev.jjs.impl.ResolvePermutationDependentValues;
@@ -127,7 +128,6 @@ import com.google.gwt.dev.jjs.impl.codesplitter.MultipleDependencyGraphRecorder;
 import com.google.gwt.dev.jjs.impl.codesplitter.ReplaceRunAsyncs;
 import com.google.gwt.dev.jjs.impl.gflow.DataflowOptimizer;
 import com.google.gwt.dev.js.BaselineCoverageGatherer;
-import com.google.gwt.dev.js.ClosureJsRunner;
 import com.google.gwt.dev.js.CoverageInstrumentor;
 import com.google.gwt.dev.js.DuplicateClinitRemover;
 import com.google.gwt.dev.js.EvalFunctionsAtTopScope;
@@ -328,9 +328,6 @@ public final class JavaToJavaScriptCompiler {
       // TODO(stalcup): hide metrics gathering in a callback or subclass
       logger.log(TreeLogger.INFO, "Compiling permutation " + permutationId + "...");
 
-      // Rewrite calls to from boxed constructor types to specialized unboxed methods
-      RewriteConstructorCallsForUnboxedTypes.exec(jprogram);
-
       // (2) Transform unresolved Java AST to resolved Java AST
       ResolvePermutationDependentValues
           .exec(jprogram, properties, permutation.getPropertyAndBindingInfos());
@@ -350,6 +347,9 @@ public final class JavaToJavaScriptCompiler {
       // constants) and 2) after all normalizations to collect synthetic references (e.g. to
       // record references to runtime classes like LongLib).
       maybeRecordReferencesAndControlFlow(false);
+
+      // Rewrite calls to from boxed constructor types to specialized unboxed methods
+      RewriteConstructorCallsForUnboxedTypes.exec(jprogram);
 
       // Replace compile time constants by their values.
       // TODO(rluble): eventually move to normizeSemantics.
@@ -654,23 +654,17 @@ public final class JavaToJavaScriptCompiler {
       Permutation permutation, long startTimeMs, SizeBreakdown[] sizeBreakdowns,
       PermutationResult permutationResult) {
     CompilationMetricsArtifact compilationMetrics = null;
-    // TODO: enable this when ClosureCompiler is enabled
     if (options.isCompilerMetricsEnabled()) {
-      if (options.isClosureCompilerEnabled()) {
-        logger.log(TreeLogger.WARN, "Incompatible options: -XenableClosureCompiler and "
-            + "-XcompilerMetric; ignoring -XcompilerMetric.");
-      } else {
-        compilationMetrics = new CompilationMetricsArtifact(permutation.getId());
-        compilationMetrics.setCompileElapsedMilliseconds(
-            System.currentTimeMillis() - startTimeMs);
-        compilationMetrics.setElapsedMilliseconds(
-            System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime());
-        compilationMetrics.setJsSize(sizeBreakdowns);
-        compilationMetrics.setPermutationDescription(permutation.getProperties().prettyPrint());
-        permutationResult.addArtifacts(Lists.newArrayList(
-            unifiedAst.getModuleMetrics(), unifiedAst.getPrecompilationMetrics(),
-            compilationMetrics));
-      }
+      compilationMetrics = new CompilationMetricsArtifact(permutation.getId());
+      compilationMetrics.setCompileElapsedMilliseconds(
+          System.currentTimeMillis() - startTimeMs);
+      compilationMetrics.setElapsedMilliseconds(
+          System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime());
+      compilationMetrics.setJsSize(sizeBreakdowns);
+      compilationMetrics.setPermutationDescription(permutation.getProperties().prettyPrint());
+      permutationResult.addArtifacts(Lists.newArrayList(
+          unifiedAst.getModuleMetrics(), unifiedAst.getPrecompilationMetrics(),
+          compilationMetrics));
     }
     return compilationMetrics;
   }
@@ -680,27 +674,15 @@ public final class JavaToJavaScriptCompiler {
       boolean isSourceMapsEnabled, SizeBreakdown[] sizeBreakdowns,
       List<JsSourceMap> sourceInfoMaps, PermutationResult permutationResult) {
     if (options.isJsonSoycEnabled()) {
-      // TODO: enable this when ClosureCompiler is enabled
-      if (options.isClosureCompilerEnabled()) {
-        logger.log(TreeLogger.WARN, "Incompatible options: -XenableClosureCompiler and "
-            + "-XjsonSoyc; ignoring -XjsonSoyc.");
-      } else {
-        // Is a super set of SourceMapRecorder.makeSourceMapArtifacts().
-        permutationResult.addArtifacts(EntityRecorder.makeSoycArtifacts(
-            permutationId, sourceInfoMaps, options.getSourceMapFilePrefix(),
-            jjsmap, sizeBreakdowns,
-            ((DependencyGraphRecorder) dependenciesAndRecorder.getRight()), jprogram));
-      }
+      // Is a super set of SourceMapRecorder.makeSourceMapArtifacts().
+      permutationResult.addArtifacts(EntityRecorder.makeSoycArtifacts(
+          permutationId, sourceInfoMaps, options.getSourceMapFilePrefix(),
+          jjsmap, sizeBreakdowns,
+          ((DependencyGraphRecorder) dependenciesAndRecorder.getRight()), jprogram));
     } else if (isSourceMapsEnabled) {
-      // TODO: enable this when ClosureCompiler is enabled
-      if (options.isClosureCompilerEnabled()) {
-        logger.log(TreeLogger.WARN, "Incompatible options: -XenableClosureCompiler and "
-            + "compiler.useSourceMaps=true; ignoring compiler.useSourceMaps=true.");
-      } else {
-        logger.log(TreeLogger.INFO, "Source Maps Enabled");
-        permutationResult.addArtifacts(SourceMapRecorder.exec(permutationId, sourceInfoMaps,
-            options.getSourceMapFilePrefix()));
-      }
+      logger.log(TreeLogger.INFO, "Source Maps Enabled");
+      permutationResult.addArtifacts(SourceMapRecorder.exec(permutationId, sourceInfoMaps,
+          options.getSourceMapFilePrefix()));
     }
   }
 
@@ -725,19 +707,11 @@ public final class JavaToJavaScriptCompiler {
       List<JsSourceMap> sourceInfoMaps, PermutationResult permutationResult,
       CompilationMetricsArtifact compilationMetrics)
       throws IOException, UnableToCompleteException {
-    // TODO: enable this when ClosureCompiler is enabled
-    if (options.isClosureCompilerEnabled()) {
-      if (options.isSoycEnabled()) {
-        logger.log(TreeLogger.WARN, "Incompatible options: -XenableClosureCompiler and "
-            + "-compileReport; ignoring -compileReport.");
-      }
-    } else {
-      permutationResult.addArtifacts(makeSoycArtifacts(permutationId, js, sizeBreakdowns,
-          options.isSoycExtra() ? sourceInfoMaps : null, dependenciesAndRecorder.getLeft(),
-          jjsmap, internedLiteralByVariableName, unifiedAst.getModuleMetrics(),
-          unifiedAst.getPrecompilationMetrics(), compilationMetrics,
-          options.isSoycHtmlDisabled()));
-    }
+    permutationResult.addArtifacts(makeSoycArtifacts(permutationId, js, sizeBreakdowns,
+        options.isSoycExtra() ? sourceInfoMaps : null, dependenciesAndRecorder.getLeft(),
+        jjsmap, internedLiteralByVariableName, unifiedAst.getModuleMetrics(),
+        unifiedAst.getPrecompilationMetrics(), compilationMetrics,
+        options.isSoycHtmlDisabled()));
   }
 
   private void addSyntheticArtifacts(UnifiedAst unifiedAst, Permutation permutation,
@@ -773,14 +747,6 @@ public final class JavaToJavaScriptCompiler {
 
     Event generateJavascriptEvent =
         SpeedTracerLogger.start(CompilerEventType.GENERATE_JAVASCRIPT);
-
-    boolean useClosureCompiler = options.isClosureCompilerEnabled();
-    if (useClosureCompiler) {
-      ClosureJsRunner runner = new ClosureJsRunner();
-      runner.compile(jprogram, jsProgram, jsFragments, options.getOutput());
-      generateJavascriptEvent.end();
-      return;
-    }
 
     for (int i = 0; i < jsFragments.length; i++) {
       DefaultTextOutput out = new DefaultTextOutput(!options.isIncrementalCompileEnabled() &&
@@ -1187,6 +1153,8 @@ public final class JavaToJavaScriptCompiler {
       // (3) Normalize the unresolved Java AST
       // Replace defender method references
       ReplaceDefenderMethodReferences.exec(jprogram);
+      // Replace calls to native overrides of object methods.
+      ReplaceCallsToNativeJavaLangObjectOverrides.exec(jprogram);
 
       FixAssignmentsToUnboxOrCast.exec(jprogram);
       if (options.isEnableAssertions()) {

@@ -17,12 +17,15 @@ package java.lang;
 
 import static javaemul.internal.InternalPreconditions.checkArrayType;
 import static javaemul.internal.InternalPreconditions.checkNotNull;
+import static javaemul.internal.InternalPreconditions.isTypeChecked;
 
 import java.io.PrintStream;
 
 import javaemul.internal.ArrayHelper;
 import javaemul.internal.DateUtil;
 import javaemul.internal.HashCodes;
+
+import jsinterop.annotations.JsMethod;
 
 /**
  * General-purpose low-level utility methods. GWT only supports a limited subset
@@ -61,13 +64,13 @@ public final class System {
     if (srcOfs < 0 || destOfs < 0 || len < 0 || srcOfs + len > srclen || destOfs + len > destlen) {
       throw new IndexOutOfBoundsException();
     }
+
     /*
      * If the arrays are not references or if they are exactly the same type, we
      * can copy them in native code for speed. Otherwise, we have to copy them
      * in Java so we get appropriate errors.
      */
-    if ((!srcComp.isPrimitive() || srcComp.isArray())
-        && !srcType.equals(destType)) {
+    if (isTypeChecked() && !srcComp.isPrimitive() && !srcType.equals(destType)) {
       // copy in Java to make sure we get ArrayStoreExceptions if the values
       // aren't compatible
       Object[] srcArray = (Object[]) src;
@@ -104,16 +107,14 @@ public final class System {
   /**
    * The compiler replaces getProperty by the actual value of the property.
    */
-  public static String getProperty(String key) {
-    throw new AssertionError("System.getProperty should have been replaced by the compiler.");
-  }
+  @JsMethod(name = "$getDefine", namespace = "nativebootstrap.Util")
+  public static native String getProperty(String key);
 
   /**
    * The compiler replaces getProperty by the actual value of the property.
    */
-  public static String getProperty(String key, String def) {
-    throw new AssertionError("System.getProperty should have been replaced by the compiler.");
-  }
+  @JsMethod(name = "$getDefine", namespace = "nativebootstrap.Util")
+  public static native String getProperty(String key, String def);
 
   public static int identityHashCode(Object o) {
     return HashCodes.getIdentityHashCode(o);

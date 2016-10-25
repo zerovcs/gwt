@@ -15,7 +15,8 @@
  */
 package java.lang;
 
-import javaemul.internal.JsUtils;
+import static javaemul.internal.InternalPreconditions.checkCriticalArithmetic;
+
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
@@ -46,14 +47,11 @@ public final class Math {
   private static final double PI_UNDER_180 = 180.0 / PI;
 
   public static double abs(double x) {
-    // This is implemented this way so that either positive or negative zeroes
-    // get converted to positive zeros.
-    // See http://www.concentric.net/~Ttwang/tech/javafloat.htm for details.
-    return x <= 0 ? 0.0 - x : x;
+    return NativeMath.abs(x);
   }
 
   public static float abs(float x) {
-    return (float) abs((double) x);
+    return (float) NativeMath.abs(x);
   }
 
   public static int abs(int x) {
@@ -72,6 +70,19 @@ public final class Math {
     return NativeMath.asin(x);
   }
 
+  public static int addExact(int x, int y) {
+    double r = (double) x + (double) y;
+    checkCriticalArithmetic(isSafeIntegerRange(r));
+    return (int) r;
+  }
+
+  public static long addExact(long x, long y) {
+    long r = x + y;
+    // "Hacker's Delight" 2-12 Overflow if both arguments have the opposite sign of the result
+    checkCriticalArithmetic(((x ^ r) & (y ^ r)) >= 0);
+    return r;
+  }
+
   public static double atan(double x) {
     return NativeMath.atan(x);
   }
@@ -81,7 +92,7 @@ public final class Math {
   }
 
   public static double cbrt(double x) {
-    return Math.pow(x, 1.0 / 3.0);
+    return x == 0 || !Double.isFinite(x) ? x : NativeMath.pow(x, 1.0 / 3.0);
   }
 
   public static double ceil(double x) {
@@ -89,15 +100,15 @@ public final class Math {
   }
 
   public static double copySign(double magnitude, double sign) {
-    if (sign < 0) {
-      return (magnitude < 0) ? magnitude : -magnitude;
-    } else {
-      return (magnitude > 0) ? magnitude : -magnitude;
-    }
+    return isNegative(sign) ? -NativeMath.abs(magnitude) : NativeMath.abs(magnitude);
+  }
+
+  private static boolean isNegative(double d) {
+    return d < 0 || 1 / d < 0;
   }
 
   public static float copySign(float magnitude, float sign) {
-    return (float) (copySign((double) magnitude, (double) sign));
+    return (float) copySign((double) magnitude, (double) sign);
   }
 
   public static double cos(double x) {
@@ -105,7 +116,17 @@ public final class Math {
   }
 
   public static double cosh(double x) {
-    return (Math.exp(x) + Math.exp(-x)) / 2.0;
+    return (NativeMath.exp(x) + NativeMath.exp(-x)) / 2;
+  }
+
+  public static int decrementExact(int x) {
+    checkCriticalArithmetic(x != Integer.MIN_VALUE);
+    return x - 1;
+  }
+
+  public static long decrementExact(long x) {
+    checkCriticalArithmetic(x != Long.MIN_VALUE);
+    return x - 1;
   }
 
   public static double exp(double x) {
@@ -113,24 +134,48 @@ public final class Math {
   }
 
   public static double expm1(double d) {
-    if (d == 0.0 || Double.isNaN(d)) {
-      return d; // "a zero with same sign as argument", arg is zero, so...
-    } else if (!Double.isInfinite(d)) {
-      if (d < 0.0d) {
-        return -1.0d;
-      } else {
-        return Double.POSITIVE_INFINITY;
-      }
-    }
-    return exp(d) + 1.0d;
+    return d == 0 ? d : NativeMath.exp(d) - 1;
   }
 
   public static double floor(double x) {
     return NativeMath.floor(x);
   }
 
+  public static int floorDiv(int dividend, int divisor) {
+    checkCriticalArithmetic(divisor != 0);
+    // round down division if the signs are different and modulo not zero
+    return ((dividend ^ divisor) >= 0 ? dividend / divisor : ((dividend + 1) / divisor) - 1);
+  }
+
+  public static long floorDiv(long dividend, long divisor) {
+    checkCriticalArithmetic(divisor != 0);
+    // round down division if the signs are different and modulo not zero
+    return ((dividend ^ divisor) >= 0 ? dividend / divisor : ((dividend + 1) / divisor) - 1);
+  }
+
+  public static int floorMod(int dividend, int divisor) {
+    checkCriticalArithmetic(divisor != 0);
+    return ((dividend % divisor) + divisor) % divisor;
+  }
+
+  public static long floorMod(long dividend, long divisor) {
+    checkCriticalArithmetic(divisor != 0);
+    return ((dividend % divisor) + divisor) % divisor;
+  }
+
   public static double hypot(double x, double y) {
-    return sqrt(x * x + y * y);
+    return Double.isInfinite(x) || Double.isInfinite(y) ?
+        Double.POSITIVE_INFINITY : NativeMath.sqrt(x * x + y * y);
+  }
+
+  public static int incrementExact(int x) {
+    checkCriticalArithmetic(x != Integer.MAX_VALUE);
+    return x + 1;
+  }
+
+  public static long incrementExact(long x) {
+    checkCriticalArithmetic(x != Long.MAX_VALUE);
+    return x + 1;
   }
 
   public static double log(double x) {
@@ -142,7 +187,7 @@ public final class Math {
   }
 
   public static double log1p(double x) {
-    return Math.log(x + 1.0d);
+    return x == 0 ? x : NativeMath.log(x + 1);
   }
 
   public static double max(double x, double y) {
@@ -177,6 +222,34 @@ public final class Math {
     return x < y ? x : y;
   }
 
+  public static int multiplyExact(int x, int y) {
+    double r = (double) x * (double) y;
+    checkCriticalArithmetic(isSafeIntegerRange(r));
+    return (int) r;
+  }
+
+  public static long multiplyExact(long x, long y) {
+    if (y == -1) {
+      return negateExact(x);
+    }
+    if (y == 0) {
+      return 0;
+    }
+    long r = x * y;
+    checkCriticalArithmetic(r / y == x);
+    return r;
+  }
+
+  public static int negateExact(int x) {
+    checkCriticalArithmetic(x != Integer.MIN_VALUE);
+    return -x;
+  }
+
+  public static long negateExact(long x) {
+    checkCriticalArithmetic(x != Long.MIN_VALUE);
+    return -x;
+  }
+
   public static double pow(double x, double exp) {
     return NativeMath.pow(x, exp);
   }
@@ -185,16 +258,19 @@ public final class Math {
     return NativeMath.random();
   }
 
-  public static double rint(double d) {
-    if (Double.isNaN(d)) {
-      return d;
-    } else if (Double.isInfinite(d)) {
-      return d;
-    } else if (d == 0.0d) {
-      return d;
-    } else {
-      return round(d);
+  public static double rint(double x) {
+    // Floating point has a mantissa with an accuracy of 52 bits so
+    // any number bigger than 2^52 is effectively a finite integer value.
+    // This case also filters out NaN and infinite values.
+    if (NativeMath.abs(x) < (double) (1L << 52)) {
+      double mod2 = x % 2;
+      if ((mod2 == -1.5) || (mod2 == 0.5)) {
+        x = NativeMath.floor(x);
+      } else {
+        x = NativeMath.round(x);
+      }
     }
+    return x;
   }
 
   public static long round(double x) {
@@ -202,56 +278,49 @@ public final class Math {
   }
 
   public static int round(float x) {
-    double roundedValue = NativeMath.round(x);
-    return unsafeCastToInt(roundedValue);
+    return (int) NativeMath.round(x);
   }
 
-  private static native int unsafeCastToInt(double d) /*-{
-    return d;
-  }-*/;
+  public static int subtractExact(int x, int y) {
+    double r = (double) x - (double) y;
+    checkCriticalArithmetic(isSafeIntegerRange(r));
+    return (int) r;
+  }
+
+  public static long subtractExact(long x, long y) {
+    long r = x - y;
+    // "Hacker's Delight" Overflow if the arguments have different signs and
+    // the sign of the result is different than the sign of x
+    checkCriticalArithmetic(((x ^ y) & (x ^ r)) >= 0);
+    return r;
+  }
 
   public static double scalb(double d, int scaleFactor) {
     if (scaleFactor >= 31 || scaleFactor <= -31) {
-      return d * Math.pow(2, scaleFactor);
+      return d * NativeMath.pow(2, scaleFactor);
     } else if (scaleFactor > 0) {
       return d * (1 << scaleFactor);
     } else if (scaleFactor == 0) {
       return d;
     } else {
-      return d * 1.0d / (1 << -scaleFactor);
+      return d / (1 << -scaleFactor);
     }
   }
 
   public static float scalb(float f, int scaleFactor) {
-    if (scaleFactor >= 31 || scaleFactor <= -31) {
-      return f * (float) Math.pow(2, scaleFactor);
-    } else if (scaleFactor > 0) {
-      return f * (1 << scaleFactor);
-    } else if (scaleFactor == 0) {
-      return f;
-    } else {
-      return f * 1.0f / (1 << -scaleFactor);
-    }
+    return (float) scalb((double) f, scaleFactor);
   }
 
   public static double signum(double d) {
-    if (d > 0.0d) {
-      return 1.0d;
-    } else if (d < 0.0d) {
-      return -1.0d;
+    if (d == 0 || Double.isNaN(d)) {
+      return d;
     } else {
-      return 0.0d;
+      return d < 0 ? -1 : 1;
     }
   }
 
   public static float signum(float f) {
-    if (f > 0.0f) {
-      return 1.0f;
-    } else if (f < 0.0f) {
-      return -1.0f;
-    } else {
-      return 0.0f;
-    }
+    return (float) signum((double) f);
   }
 
   public static double sin(double x) {
@@ -259,7 +328,7 @@ public final class Math {
   }
 
   public static double sinh(double x) {
-    return (Math.exp(x) - Math.exp(-x)) / 2.0d;
+    return x == 0 ? x : (NativeMath.exp(x) - NativeMath.exp(-x)) / 2;
   }
 
   public static double sqrt(double x) {
@@ -271,27 +340,38 @@ public final class Math {
   }
 
   public static double tanh(double x) {
-    if (x == JsUtils.getInfinity()) {
-      return 1.0d;
-    } else if (x == -JsUtils.getInfinity()) {
-      return -1.0d;
+    if (x == 0.0) {
+      return x;
+    } else if (Double.isInfinite(x)) {
+      return signum(x);
+    } else {
+      double e2x = NativeMath.exp(2 * x);
+      return (e2x - 1) / (e2x + 1);
     }
-
-    double e2x = Math.exp(2.0 * x);
-    return (e2x - 1) / (e2x + 1);
   }
 
   public static double toDegrees(double x) {
     return x * PI_UNDER_180;
   }
 
+  public static int toIntExact(long x) {
+    int ix = (int) x;
+    checkCriticalArithmetic(ix == x);
+    return ix;
+  }
+
   public static double toRadians(double x) {
     return x * PI_OVER_180;
+  }
+
+  private static boolean isSafeIntegerRange(double value) {
+    return Integer.MIN_VALUE <= value && value <= Integer.MAX_VALUE;
   }
 
   @JsType(isNative = true, name = "Math", namespace = JsPackage.GLOBAL)
   private static class NativeMath {
     public static double LOG10E;
+    public static native double abs(double x);
     public static native double acos(double x);
     public static native double asin(double x);
     public static native double atan(double x);

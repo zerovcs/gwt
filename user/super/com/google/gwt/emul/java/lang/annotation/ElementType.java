@@ -17,10 +17,10 @@ package java.lang.annotation;
 
 /**
  * Enumerates types of declared elements in a Java program <a
- * href="http://java.sun.com/j2se/1.5.0/docs/api/java/lang/annotation/ElementType.html">[Sun
+ * href="https://docs.oracle.com/javase/8/docs/api/java/lang/annotation/ElementType.html">[Oracle
  * docs]</a>.
  */
 public enum ElementType {
   ANNOTATION_TYPE, CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE,
-  PARAMETER, TYPE,
+  PARAMETER, TYPE, TYPE_PARAMETER, TYPE_USE,
 }

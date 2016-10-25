@@ -37,6 +37,7 @@ public final class Double extends Number implements Comparable<Double> {
   public static final double NEGATIVE_INFINITY = -1d / 0d;
   public static final double POSITIVE_INFINITY = 1d / 0d;
   public static final int SIZE = 64;
+  public static final int BYTES = SIZE / Byte.SIZE;
   public static final Class<Double> TYPE = double.class;
 
   // 2^512, 2^-512
@@ -196,20 +197,21 @@ public final class Double extends Number implements Comparable<Double> {
     return (ihi << 32) | ilo;
   }
 
-  /**
-   * @skip Here for shared implementation with Arrays.hashCode
-   */
   public static int hashCode(double d) {
     return (int) d;
   }
 
-  public static boolean isInfinite(double x) {
-    return x == JsUtils.getInfinity() || x == -JsUtils.getInfinity();
+  public static boolean isFinite(double x) {
+    return JsUtils.isFinite(x);
   }
 
-  public static native boolean isNaN(double x) /*-{
-    return isNaN(x);
-  }-*/;
+  public static boolean isInfinite(double x) {
+    return !isNaN(x) && !isFinite(x);
+  }
+
+  public static boolean isNaN(double x) {
+    return JsUtils.isNaN(x);
+  }
 
   public static double longBitsToDouble(long bits) {
     long ihi = (long) (bits >> 32);
@@ -263,8 +265,20 @@ public final class Double extends Number implements Comparable<Double> {
     return negative ? -d : d;
   }
 
+  public static double max(double a, double b) {
+    return Math.max(a, b);
+  }
+
+  public static double min(double a, double b) {
+    return Math.min(a, b);
+  }
+
   public static double parseDouble(String s) throws NumberFormatException {
     return __parseAndValidateDouble(s);
+  }
+
+  public static double sum(double a, double b) {
+    return a + b;
   }
 
   public static String toString(double b) {
@@ -281,20 +295,20 @@ public final class Double extends Number implements Comparable<Double> {
 
   public Double(double value) {
     /*
-     * Call to $createDouble(value) must be here so that the method is referenced and not
-     * pruned before new Double(value) is replaced by $createDouble(value) by
+     * Call to $create(value) must be here so that the method is referenced and not
+     * pruned before new Double(value) is replaced by $create(value) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createDouble(value);
+    $create(value);
   }
 
   public Double(String s) {
     /*
-     * Call to $createDouble(value) must be here so that the method is referenced and not
-     * pruned before new Double(value) is replaced by $createDouble(value) by
+     * Call to $create(value) must be here so that the method is referenced and not
+     * pruned before new Double(value) is replaced by $create(value) by
      * RewriteConstructorCallsForUnboxedTypes.
      */
-    $createDouble(s);
+    $create(s);
   }
 
   @Override
@@ -309,12 +323,8 @@ public final class Double extends Number implements Comparable<Double> {
 
   @Override
   public double doubleValue() {
-    return unsafeCast(checkNotNull(this));
+    return JsUtils.unsafeCastToDouble(checkNotNull(this));
   }
-
-  private static native double unsafeCast(Object instance) /*-{
-    return instance;
-  }-*/;
 
   @Override
   public boolean equals(Object o) {
@@ -369,13 +379,11 @@ public final class Double extends Number implements Comparable<Double> {
   }
 
   // CHECKSTYLE_OFF: Utility Methods for unboxed Double.
-  @JsMethod(name = "$create__double")
-  private static Double $createDouble(double x) {
+  protected static Double $create(double x) {
     return createNative(x);
   }
 
-  @JsMethod(name = "$create__java_lang_String")
-  private static Double $createDouble(String s) {
+  protected static Double $create(String s) {
     return createNative(Double.parseDouble(s));
   }
 
@@ -384,7 +392,7 @@ public final class Double extends Number implements Comparable<Double> {
   }-*/;
 
   @JsMethod
-  private static boolean $isInstance(Object instance) {
+  protected static boolean $isInstance(Object instance) {
     return "number".equals(JsUtils.typeOf(instance));
   }
   //CHECKSTYLE_ON: End utility methods

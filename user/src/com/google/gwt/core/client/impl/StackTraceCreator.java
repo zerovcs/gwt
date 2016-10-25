@@ -351,7 +351,7 @@ public class StackTraceCreator {
   private static native boolean supportsErrorStack() /*-{
     // Error.stackTraceLimit is cheaper to check and available in both IE and Chrome
     if (Error.stackTraceLimit > 0) {
-      Error.stackTraceLimit = 64;
+      $wnd.Error.stackTraceLimit = Error.stackTraceLimit = 64;
       return true;
     }
 
@@ -374,7 +374,7 @@ public class StackTraceCreator {
   }-*/;
 
   private static native JsArrayString split(Object t) /*-{
-    var e = t.backingJsObject;
+    var e = t.@Throwable::backingJsObject;
     return (e && e.stack) ? e.stack.split('\n') : [];
   }-*/;
 }

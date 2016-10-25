@@ -23,10 +23,14 @@ import com.google.gwt.dev.jjs.ast.JMethodCall;
 import com.google.gwt.dev.jjs.ast.JModVisitor;
 import com.google.gwt.dev.jjs.ast.JNewInstance;
 import com.google.gwt.dev.jjs.ast.JProgram;
+import com.google.gwt.dev.jjs.ast.JType;
 import com.google.gwt.dev.jjs.ast.js.JsniMethodRef;
 import com.google.gwt.dev.util.log.speedtracer.CompilerEventType;
 import com.google.gwt.dev.util.log.speedtracer.SpeedTracerLogger;
 import com.google.gwt.dev.util.log.speedtracer.SpeedTracerLogger.Event;
+import com.google.gwt.thirdparty.guava.common.base.Function;
+import com.google.gwt.thirdparty.guava.common.base.Joiner;
+import com.google.gwt.thirdparty.guava.common.collect.Iterables;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,14 +44,16 @@ public class RewriteConstructorCallsForUnboxedTypes extends JModVisitor {
 
   public static final String NATIVE_TYPE_CREATEMETHOD_PREFIX = "$create";
   private JProgram program;
-  private Map<String, JMethod> jsniSig2Method = new HashMap<>();
+  private Map<JDeclaredType, Map<String, JMethod>> createMethodsByType = new HashMap<>();
 
   public RewriteConstructorCallsForUnboxedTypes(JProgram program) {
     this.program = program;
     for (JDeclaredType unboxedType : program.getRepresentedAsNativeTypes()) {
+      HashMap<String, JMethod> createMethods = new HashMap<>();
+      createMethodsByType.put(unboxedType, createMethods);
       for (JMethod method : unboxedType.getMethods()) {
         if (method.getName().startsWith(NATIVE_TYPE_CREATEMETHOD_PREFIX)) {
-          jsniSig2Method.put(method.getJsniSignature(false, false), method);
+          createMethods.put(getParametersAsString(method), method);
         }
       }
     }
@@ -55,16 +61,17 @@ public class RewriteConstructorCallsForUnboxedTypes extends JModVisitor {
 
   @Override
   public void endVisit(JNewInstance x, Context ctx) {
-    JMethod createMethod;
     JConstructor ctor = x.getTarget();
 
     if (!program.isRepresentedAsNativeJsPrimitive(ctor.getEnclosingType())) {
       return;
     }
 
-    // map BoxedType(args) -> BoxedType.$createBoxedType(args)
-    createMethod = jsniSig2Method.get(NATIVE_TYPE_CREATEMETHOD_PREFIX
-        + ctor.getJsniSignature(false, false));
+    // map BoxedType(args) -> BoxedType.$create(args)
+    JMethod createMethod =
+        createMethodsByType
+            .get(ctor.getEnclosingType())
+            .get(getParametersAsString(ctor));
     assert createMethod != null;
 
     JMethodCall createCall = new JMethodCall(x.getSourceInfo(), null, createMethod);
@@ -77,15 +84,27 @@ public class RewriteConstructorCallsForUnboxedTypes extends JModVisitor {
     if (x.getTarget().isConstructor()
         && program.isRepresentedAsNativeJsPrimitive(x.getTarget().getEnclosingType())) {
       JConstructor ctor = (JConstructor) x.getTarget();
-      // map BoxedType(args) -> BoxedType.$createBoxedType(args)
-      JMethod createMethod = jsniSig2Method.get(NATIVE_TYPE_CREATEMETHOD_PREFIX
-          + ctor.getJsniSignature(false, false));
+      // map BoxedType(args) -> BoxedType.$createType(args)
+      JMethod createMethod =
+          createMethodsByType
+              .get(ctor.getEnclosingType())
+              .get(getParametersAsString(ctor));
       assert createMethod != null;
 
       JsniMethodRef newJsniMethodRef = new JsniMethodRef(x.getSourceInfo(),
           x.getIdent(), createMethod, program.getJavaScriptObject());
       ctx.replaceMe(newJsniMethodRef);
     }
+  }
+
+  private static String getParametersAsString(JMethod method) {
+    return Joiner.on(",").join(Iterables.transform(method.getOriginalParamTypes(),
+        new Function<JType, String>() {
+          @Override
+          public String apply(JType type) {
+            return type.getJsniSignatureName();
+          }
+        }));
   }
 
   private static final String NAME = RewriteConstructorCallsForUnboxedTypes.class

@@ -1,12 +1,12 @@
 /*
  * Copyright 2008 Google Inc.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -15,20 +15,22 @@
  */
 package java.lang;
 
+import static javaemul.internal.InternalPreconditions.checkNotNull;
+
 /**
  * A fast way to create strings using multiple appends.
- * 
+ *
  * This class is an exact clone of {@link StringBuilder} except for the name.
  * Any change made to one should be mirrored in the other.
  */
-public final class StringBuffer extends AbstractStringBuilder implements CharSequence, Appendable {
+public final class StringBuffer extends AbstractStringBuilder {
 
   public StringBuffer() {
     super("");
   }
 
   public StringBuffer(CharSequence s) {
-    super(String.valueOf(s));
+    super(s.toString());
   }
 
   /**
@@ -41,7 +43,7 @@ public final class StringBuffer extends AbstractStringBuilder implements CharSeq
   }
 
   public StringBuffer(String s) {
-    super(s);
+    super(checkNotNull(s));
   }
 
   public StringBuffer append(boolean x) {
@@ -73,7 +75,7 @@ public final class StringBuffer extends AbstractStringBuilder implements CharSeq
 
   @Override
   public StringBuffer append(CharSequence x, int start, int end) {
-    append0(x, start, end);
+    string += String.valueOf(x).substring(start, end);
     return this;
   }
 
@@ -144,11 +146,11 @@ public final class StringBuffer extends AbstractStringBuilder implements CharSeq
   }
 
   public StringBuffer insert(int index, CharSequence chars) {
-    return insert(index, chars.toString());
+    return insert(index, String.valueOf(chars));
   }
 
   public StringBuffer insert(int index, CharSequence chars, int start, int end) {
-    return insert(index, chars.subSequence(start, end).toString());
+    return insert(index, String.valueOf(chars).substring(start, end));
   }
 
   public StringBuffer insert(int index, double x) {

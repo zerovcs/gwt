@@ -15,14 +15,21 @@
  */
 package java.util;
 
+import static javaemul.internal.InternalPreconditions.checkArgument;
+import static javaemul.internal.InternalPreconditions.checkCriticalNotNull;
+import static javaemul.internal.InternalPreconditions.checkNotNull;
+
 /**
- * An unbounded priority queue based on a priority heap. <a
- * href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/PriorityQueue.html">[Sun
- * docs]</a>
- * 
+ * An unbounded priority queue based on a priority heap.
+ * See <a href="https://docs.oracle.com/javase/8/docs/api/java/util/PriorityQueue.html">
+ * the official Java API doc</a> for details.
+ * A priority queue does not permit {@code null} elements.
+ *
  * @param <E> element type.
  */
 public class PriorityQueue<E> extends AbstractQueue<E> {
+
+  private static final int DEFAULT_INITIAL_CAPACITY = 11;
 
   private static int getLeftChild(int node) {
     return 2 * node + 1;
@@ -50,7 +57,7 @@ public class PriorityQueue<E> extends AbstractQueue<E> {
   private ArrayList<E> heap;
 
   public PriorityQueue() {
-    this(11);
+    this(DEFAULT_INITIAL_CAPACITY);
   }
 
   public PriorityQueue(Collection<? extends E> c) {
@@ -63,11 +70,12 @@ public class PriorityQueue<E> extends AbstractQueue<E> {
   }
 
   public PriorityQueue(int initialCapacity, Comparator<? super E> cmp) {
-    heap = new ArrayList<E>(initialCapacity);
-    if (cmp == null) {
-      cmp = Comparators.natural();
-    }
-    this.cmp = cmp;
+    heap = new ArrayList<>(initialCapacity);
+    this.cmp = Comparators.nullToNaturalOrder(cmp);
+  }
+
+  public PriorityQueue(Comparator<? super E> comparator) {
+    this(DEFAULT_INITIAL_CAPACITY, comparator);
   }
 
   @SuppressWarnings("unchecked")
@@ -86,6 +94,8 @@ public class PriorityQueue<E> extends AbstractQueue<E> {
 
   @Override
   public boolean addAll(Collection<? extends E> c) {
+    checkNotNull(c);
+    checkArgument(c != this);
     if (heap.addAll(c)) {
       makeHeap(0);
       return true;
@@ -99,22 +109,17 @@ public class PriorityQueue<E> extends AbstractQueue<E> {
   }
 
   public Comparator<? super E> comparator() {
-    return cmp == Comparators.natural() ? null : cmp;
+    return Comparators.naturalOrderToNull(cmp);
   }
 
   @Override
   public boolean contains(Object o) {
-    return heap.contains(o);
+    return indexOf(o) >= 0;
   }
 
   @Override
   public boolean containsAll(Collection<?> c) {
     return heap.containsAll(c);
-  }
-
-  @Override
-  public boolean isEmpty() {
-    return heap.isEmpty();
   }
 
   @Override
@@ -125,6 +130,7 @@ public class PriorityQueue<E> extends AbstractQueue<E> {
 
   @Override
   public boolean offer(E e) {
+    checkCriticalNotNull(e);
     int node = heap.size();
     heap.add(e);
     while (node > 0) {
@@ -144,25 +150,21 @@ public class PriorityQueue<E> extends AbstractQueue<E> {
 
   @Override
   public E peek() {
-    if (heap.size() == 0) {
-      return null;
-    }
-    return heap.get(0);
+    return heap.isEmpty() ? null : heap.get(0);
   }
 
   @Override
   public E poll() {
-    if (heap.size() == 0) {
-      return null;
+    E value = peek();
+    if (value != null) {
+      removeAtIndex(0);
     }
-    E value = heap.get(0);
-    removeAtIndex(0);
     return value;
   }
 
   @Override
   public boolean remove(Object o) {
-    int index = heap.indexOf(o);
+    int index = indexOf(o);
     if (index < 0) {
       return false;
     }
@@ -194,6 +196,11 @@ public class PriorityQueue<E> extends AbstractQueue<E> {
   }
 
   @Override
+  public Spliterator<E> spliterator() {
+    return Spliterators.spliterator(this, Spliterator.NONNULL);
+  }
+
+  @Override
   public Object[] toArray() {
     return heap.toArray();
   }
@@ -203,14 +210,9 @@ public class PriorityQueue<E> extends AbstractQueue<E> {
     return heap.toArray(a);
   }
 
-  @Override
-  public String toString() {
-    return heap.toString();
-  }
-
   /**
    * Make the subtree rooted at <code>node</code> a valid heap. O(n) time
-   * 
+   *
    * @param node
    */
   protected void makeHeap(int node) {
@@ -261,6 +263,10 @@ public class PriorityQueue<E> extends AbstractQueue<E> {
       smallestChild = rightChild;
     }
     return smallestChild;
+  }
+
+  private int indexOf(Object o) {
+    return o == null ? -1 : heap.indexOf(o);
   }
 
   private boolean isLeaf(int node) {

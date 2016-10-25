@@ -15,6 +15,7 @@
  */
 package com.google.gwt.emultest.java8.util;
 
+import com.google.gwt.core.client.JavaScriptException;
 import com.google.gwt.junit.client.GWTTestCase;
 
 import java.util.Collections;
@@ -49,15 +50,23 @@ public class PrimitiveIteratorTest extends GWTTestCase {
     });
 
     try {
+      it = createTestPrimitiveDoubleIterator();
       it.forEachRemaining((Consumer<Double>) null);
       fail();
-    } catch (NullPointerException expected) {
+    } catch (NullPointerException e) {
+      // expected
+    } catch (JavaScriptException e) {
+      // expected
     }
 
     try {
+      it = createTestPrimitiveDoubleIterator();
       it.forEachRemaining((DoubleConsumer) null);
       fail();
-    } catch (NullPointerException expected) {
+    } catch (NullPointerException e) {
+      // expected
+    } catch (JavaScriptException e) {
+      // expected
     }
   }
 
@@ -75,15 +84,23 @@ public class PrimitiveIteratorTest extends GWTTestCase {
     });
 
     try {
+      it = createTestPrimitiveIntIterator();
       it.forEachRemaining((Consumer<Integer>) null);
       fail();
-    } catch (NullPointerException expected) {
+    } catch (NullPointerException e) {
+      // expected
+    } catch (JavaScriptException e) {
+      // expected
     }
 
     try {
+      it = createTestPrimitiveIntIterator();
       it.forEachRemaining((IntConsumer) null);
       fail();
-    } catch (NullPointerException expected) {
+    } catch (NullPointerException e) {
+      // expected
+    } catch (JavaScriptException e) {
+      // expected
     }
   }
 
@@ -101,15 +118,23 @@ public class PrimitiveIteratorTest extends GWTTestCase {
     });
 
     try {
+      it = createTestPrimitiveLongIterator();
       it.forEachRemaining((Consumer<Long>) null);
       fail();
-    } catch (NullPointerException expected) {
+    } catch (NullPointerException e) {
+      // expected
+    } catch (JavaScriptException e) {
+      // expected
     }
 
     try {
+      it = createTestPrimitiveLongIterator();
       it.forEachRemaining((LongConsumer) null);
       fail();
-    } catch (NullPointerException expected) {
+    } catch (NullPointerException e) {
+      // expected
+    } catch (JavaScriptException e) {
+      // expected
     }
   }
 

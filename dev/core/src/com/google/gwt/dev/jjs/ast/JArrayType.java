@@ -80,6 +80,11 @@ public class JArrayType extends JReferenceType {
   }
 
   @Override
+  public boolean isPrimitiveType() {
+    return false;
+  }
+
+  @Override
   public boolean isAbstract() {
     return false;
   }
@@ -118,6 +123,11 @@ public class JArrayType extends JReferenceType {
 
   @Override
   public boolean isJsFunction() {
+    return false;
+  }
+
+  @Override
+  public boolean isJsFunctionImplementation() {
     return false;
   }
 

@@ -252,6 +252,14 @@ public class Java8Test extends GWTTestCase {
     assertFalse(isGwtSourceLevel8());
   }
 
+  public void testMultipleDefaults_defaultShadowsOverSyntheticAbstractStub() {
+    assertFalse(isGwtSourceLevel8());
+  }
+
+  public void testMultipleDefaults_defaultShadowsOverDefaultOnSuperAbstract() {
+    assertFalse(isGwtSourceLevel8());
+  }
+
   public void testInterfaceThis() {
     assertFalse(isGwtSourceLevel8());
   }
@@ -268,7 +276,39 @@ public class Java8Test extends GWTTestCase {
     assertFalse(isGwtSourceLevel8());
   }
 
-  public void testMethodReferenceImplementedInSuperclass() {
+  public void testMethodReference_implementedInSuperclass() {
+    assertFalse(isGwtSourceLevel8());
+  }
+
+  public void testMethodReference_genericTypeParameters() {
+    assertFalse(isGwtSourceLevel8());
+  }
+
+  public void testMethodReference_autoboxing() {
+    assertFalse(isGwtSourceLevel8());
+  }
+
+  public void testNativeJsOverlay_lambda() {
+    assertFalse(isGwtSourceLevel8());
+  }
+
+  public void testLambdaCapturingThis_onDefaultMethod() {
+    assertFalse(isGwtSourceLevel8());
+  }
+
+  public void testJsFunction_withOverlay() {
+    assertFalse(isGwtSourceLevel8());
+  }
+
+  public void testFunctionalExpressionBridges() {
+    assertFalse(isGwtSourceLevel8());
+  }
+
+  public void testCorrectNaming() {
+    assertFalse(isGwtSourceLevel8());
+  }
+
+  public void testInterfaceWithOverlayAndNativeSubclass() {
     assertFalse(isGwtSourceLevel8());
   }
 

@@ -36,15 +36,25 @@ import com.google.gwt.dev.jjs.ast.JReturnStatement;
 import com.google.gwt.dev.jjs.ast.JTypeOracle;
 import com.google.gwt.dev.jjs.ast.JVariableRef;
 import com.google.gwt.dev.jjs.ast.RuntimeConstants;
+import com.google.gwt.dev.jjs.ast.js.JsniMethodBody;
+import com.google.gwt.dev.jjs.ast.js.JsniMethodRef;
 import com.google.gwt.dev.jjs.impl.MakeCallsStatic.CreateStaticImplsVisitor;
 import com.google.gwt.dev.jjs.impl.MakeCallsStatic.StaticCallConverter;
+import com.google.gwt.dev.js.ast.JsContext;
+import com.google.gwt.dev.js.ast.JsInvocation;
+import com.google.gwt.dev.js.ast.JsModVisitor;
+import com.google.gwt.dev.js.ast.JsNameRef;
+import com.google.gwt.thirdparty.guava.common.collect.Iterables;
 import com.google.gwt.thirdparty.guava.common.collect.Lists;
 import com.google.gwt.thirdparty.guava.common.collect.Maps;
+import com.google.gwt.thirdparty.guava.common.collect.Sets;
 
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Devirtualization is the process of converting virtual method calls on instances that might be
@@ -104,6 +114,32 @@ public class Devirtualizer {
     }
 
     @Override
+    public void endVisit(JsniMethodRef x, Context ctx) {
+      JMethod method = x.getTarget();
+      if (method == null || !mightNeedDevirtualization(method)) {
+        return;
+      }
+      ensureDevirtualVersionExists(method);
+
+      // Replace the JMethod in jsni reference to a reference to the devirtualized method.
+      // Note that a JsniMethodRefs is a pair containing the Jsni reference as text (i.e.
+      // "@java.lang.Boolean::booleanValue") and a reference to the actual JMethod in the AST;
+      // in generation time the actual JMethod that is called is looked up from the reference text.
+      //
+      // Here we just replace the JMethod the reference is pointing to without updating the
+      // reference text.
+      //
+      // Keeping the "key" unchanged avoid the necessity to sync up with the modifications in the
+      // JS AST when the JsniMethodBody is processed.
+      JMethod devirtualMethod = devirtualMethodByMethod.get(method);
+      ctx.replaceMe(new JsniMethodRef(
+          x.getSourceInfo(),
+          x.getIdent(),
+          devirtualMethod,
+          program.getJavaScriptObject()));
+    }
+
+    @Override
     public void endVisit(JMethodCall x, Context ctx) {
       JMethod method = x.getTarget();
       if (!method.needsDynamicDispatch()) {
@@ -137,6 +173,57 @@ public class Devirtualizer {
       return true;
     }
 
+    @Override
+    public boolean visit(JsniMethodBody x, Context ctx) {
+      final Set<String> devirtualMethodJsniIdentifiers = Sets.newHashSet();
+      for (JsniMethodRef jsniMethodRef : x.getJsniMethodRefs()) {
+        JMethod target = jsniMethodRef.getTarget();
+        if (target != null && mightNeedDevirtualization(target)) {
+          devirtualMethodJsniIdentifiers.add(jsniMethodRef.getIdent());
+        }
+      }
+
+      // Devirtualize jsni method calls.
+      new JsModVisitor() {
+        @Override
+        public void endVisit(JsInvocation x, JsContext ctx) {
+          if (!(x.getQualifier() instanceof JsNameRef)) {
+            // If the invocation does not have a name as a qualifier then it is an expression and
+            // cannot be a jsni method reference.
+            return;
+          }
+          JsNameRef nameRef = (JsNameRef) x.getQualifier();
+          if (!nameRef.isJsniReference()) {
+            // The invocation is not to a JSNI method.
+            return;
+          }
+
+          // Retrieve the method referred by the JsniMethodRef and check whether it needs
+          // devirtualization.
+          if (!devirtualMethodJsniIdentifiers.contains(nameRef.getIdent())) {
+            return;
+          }
+          // Devirtualize method by rewriting
+          // a.@java.lang.Boolean::booleanValue() ==> @java.lang.Boolean::booleanValue(a).
+          //
+          // Not the the reference identifier is *NOT* changed and will act a the key in the lookup
+          // for the corresponding JMethod which is contained in the corresponding JsniMethodRef
+          // node.
+          ctx.replaceMe(
+              new JsInvocation(
+                  x.getSourceInfo(),
+                  new JsNameRef(
+                      nameRef.getSourceInfo(), nameRef.getIdent()),
+                  Iterables.concat(
+                      Collections.singleton(nameRef.getQualifier()), x.getArguments())));
+          return;
+        }
+      }.accept(x.getFunc());
+
+      // Now go ahead and fix the corresponding JSNI references.
+      return true;
+    }
+
     /**
      * Constructs and caches a method that is a new static version of the given method or a
      * trampoline function that wraps a new static version of the given method. It chooses which to
@@ -158,8 +245,12 @@ public class Devirtualizer {
       // and optimizations need to be strong enough to perform the same kind of size reductions
       // achieved by keeping track of singleImpls.
 
-      //
-      if (!program.typeOracle.isDualJsoInterface(targetType) &&
+      if (method.getSignature().equals("toString()Ljava/lang/String;")) {
+        // Object.toString is special because: 1) every JS object has it and 2) GWT creates
+        // a bridge from toString to its implementation method.
+        devirtualMethodByMethod.put(
+            method, program.getIndexedMethod(RuntimeConstants.RUNTIME_TO_STRING));
+      } else if (!program.typeOracle.isDualJsoInterface(targetType) &&
           program.typeOracle.isSingleJsoImpl(targetType)) {
         // Optimize the trampoline away when there is ONLY JSO dispatch.
         // TODO(rluble): verify that this case can not arise in optimized mode and if so
@@ -175,11 +266,8 @@ public class Devirtualizer {
         JMethod jsoStaticImpl =
             staticImplCreator.getOrCreateStaticImpl(program, overridingMethod);
         devirtualMethodByMethod.put(method, jsoStaticImpl);
-      } else if (method.isJsOverlay()) {
-        // A virtual dispatch on a target that is already known to be a JavaScriptObject, this
-        // should have been handled by MakeCallsStatic.
-        // TODO(rluble): verify that this case can not arise in optimized mode and if so
-        // remove as is an unnecessary optimization.
+      } else if (isOverlayMethod(method)) {
+        // A virtual dispatch on a target that is already known to be an overlay method,.
         JMethod devirtualMethod = staticImplCreator.getOrCreateStaticImpl(program, method);
         devirtualMethodByMethod.put(method, devirtualMethod);
       } else {
@@ -193,24 +281,43 @@ public class Devirtualizer {
     }
 
     private boolean mightNeedDevirtualization(JMethod method, JReferenceType instanceType) {
-      // todo remove instance check
       if (instanceType == null || !method.needsDynamicDispatch()) {
         return false;
       }
       if (devirtualMethodByMethod.containsKey(method)) {
         return true;
       }
-      if (method.isJsOverlay()) {
+      if (isOverlayMethod(method)) {
         return true;
       }
       if (method.getEnclosingType().isJsNative()) {
         // Methods in a native JsType that are not JsOverlay should NOT be devirtualized.
         return false;
       }
+      if (instanceType.isNullType()) {
+        instanceType = method.getEnclosingType();
+      }
       EnumSet<DispatchType> dispatchType = program.getDispatchType(instanceType);
       dispatchType.remove(DispatchType.HAS_JAVA_VIRTUAL_DISPATCH);
       return !dispatchType.isEmpty();
     }
+  }
+
+  /**
+   * Returns true if {@code method} is an overlay method. Overlay methods include the ones that
+   * are marked as JsOverlay but also implicit overlays.
+   */
+  private boolean isOverlayMethod(JMethod method) {
+    return method.isJsOverlay()
+        // Synthetic private methods on interfaces are the result of lambdas that capture the
+        // enclosing instance and are defined on default methods; these can appear in native
+        // interfaces and thus need to be treated as overlays.
+        || (method.getEnclosingType() instanceof JInterfaceType && method.isPrivate())
+        // JsFunction implementation methods other than the other than the SAM implementation are
+        // also considered overalys to allow for lighter weight JsFuncitons.
+        // TODO(rluble): SAM implementation should also be devirtualized.
+        || (method.getEnclosingType().isJsFunctionImplementation()
+            && !method.isOrOverridesJsFunctionMethod());
   }
 
   public static void exec(JProgram program) {
@@ -221,7 +328,7 @@ public class Devirtualizer {
    * Maps each Object instance methods (ie, {@link Object#equals(Object)}) onto
    * its corresponding devirtualizing method.
    */
-  protected Map<JMethod, JMethod> devirtualMethodByMethod = Maps.newHashMap();
+  private Map<JMethod, JMethod> devirtualMethodByMethod = Maps.newHashMap();
 
   /**
    * Contains the Cast.hasJavaObjectVirtualDispatch method.
@@ -299,8 +406,7 @@ public class Devirtualizer {
       return;
     }
 
-    RewriteVirtualDispatches rewriter = new RewriteVirtualDispatches();
-    rewriter.accept(program);
+    new RewriteVirtualDispatches().accept(program);
   }
 
   /**
@@ -541,5 +647,9 @@ public class Devirtualizer {
       dispatchToMethodByTargetType.put(target,
           staticImplCreator.getOrCreateStaticImpl(program, overridingMethod));
     }
+  }
+
+  private static String getJsniReferenceIdentifier(JMethod method) {
+    return "@" + method.getJsniSignature(true, false);
   }
 }
