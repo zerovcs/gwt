@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry excluding="**/super/**|**/SuperDevModeLogger.java" kind="src" path="core/src"/>
-	<classpathentry excluding="**/EmulatedCharset.java|**/HashCodes.java|**/SuperDevModeLogger.java" including="javaemul/internal/ArrayHelper.java|javaemul/internal/ArrayStamper.java" kind="src" path="super/com/google/gwt/emul/javaemul/internal"/>
+	<classpathentry excluding="**/super/**" kind="src" path="core/src"/>
+	<classpathentry excluding="**/" including="javaemul/" kind="src" path="core/super/com/google/gwt/emul"/>
 	<classpathentry kind="src" path="core/javadoc"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="var" path="GWT_TOOLS/lib/apache/tapestry-util-text-4.0.2.jar" sourcepath="/GWT_TOOLS/lib/apache/tapestry-util-text-4.0.2-src.zip"/>
